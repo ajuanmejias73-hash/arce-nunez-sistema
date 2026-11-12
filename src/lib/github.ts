@@ -51,7 +51,9 @@ function mensajeError(estado: number, cuerpo: { message?: string }): string {
   const m = cuerpo.message ?? '';
   if (estado === 401) return 'El token no es válido o ya se venció. Pegá uno nuevo en "Conexión".';
   if (estado === 403 && /rate limit/i.test(m)) return 'GitHub pidió esperar un momento (demasiadas consultas). Probá de nuevo en unos minutos.';
-  if (estado === 403) return 'El token no tiene permiso para modificar el repositorio de datos.';
+  if (estado === 403) {
+    return 'El token solo puede leer, no guardar. Entrá a GitHub → Settings → Developer settings → Fine-grained tokens → tu token → Edit, poné Contents en "Read and write" y tocá Update. No hace falta pegarlo otra vez.';
+  }
   if (estado === 404) return 'No se encontró el repositorio de datos, o el token no tiene acceso a él.';
   return `GitHub respondió con un error (${estado}). ${m}`.trim();
 }
@@ -101,7 +103,22 @@ export class RepoDatos {
     if (info.permissions && info.permissions.push === false) {
       throw new ErrorGitHub('El token puede leer pero no guardar. Dale permiso de "Contents: Read and write".', 403);
     }
+    await this.probarEscritura();
     return { privado: info.private === true };
+  }
+
+  /**
+   * Prueba de escritura que no cambia nada: intenta guardar con una huella falsa.
+   * Con permiso de escritura GitHub responde 409 o 422; sin permiso, 403.
+   */
+  private async probarEscritura(): Promise<void> {
+    const existe = await this.leer('ajustes.json');
+    if (!existe) return;
+    const r = await this.pedir(this.url('ajustes.json'), {
+      method: 'PUT',
+      body: JSON.stringify({ message: 'prueba de permiso', content: '', sha: '0'.repeat(40) }),
+    });
+    if (r.status === 401 || r.status === 403) await this.fallar(r);
   }
 
   /**

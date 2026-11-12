@@ -166,6 +166,28 @@ describe('conexión con GitHub', () => {
     expect(await new RepoDatos(conexion, f).ultimoCambio()).toBeNull();
   });
 
+  const contenido = { sha: 'abc', content: aBase64(new TextEncoder().encode('{}')), encoding: 'base64', size: 2 };
+
+  it('token solo de lectura: se detecta al conectar, sin cambiar nada', async () => {
+    const { f, llamadas } = fetchFalso({
+      [`GET ${base}`]: { status: 200, body: { private: true } },
+      [`GET ${base}/contents/ajustes.json`]: { status: 200, body: contenido },
+      [`PUT ${base}/contents/ajustes.json`]: { status: 403, body: { message: 'Resource not accessible by personal access token' } },
+    });
+    await expect(new RepoDatos(conexion, f).probar()).rejects.toThrow(/Read and write/);
+    // La prueba usa una huella falsa: nunca pudo haber guardado nada.
+    expect(JSON.parse(llamadas.find((l) => l.init?.method === 'PUT')!.init!.body as string).sha).toBe('0'.repeat(40));
+  });
+
+  it('token con permiso de escritura: la prueba pasa (GitHub responde 409 por la huella falsa)', async () => {
+    const { f } = fetchFalso({
+      [`GET ${base}`]: { status: 200, body: { private: true } },
+      [`GET ${base}/contents/ajustes.json`]: { status: 200, body: contenido },
+      [`PUT ${base}/contents/ajustes.json`]: { status: 409, body: { message: 'does not match' } },
+    });
+    expect(await new RepoDatos(conexion, f).probar()).toEqual({ privado: true });
+  });
+
   it('detecta un repositorio público', async () => {
     const { f } = fetchFalso({ [`GET ${base}`]: { status: 200, body: { private: false, permissions: { push: true } } } });
     expect(await new RepoDatos(conexion, f).probar()).toEqual({ privado: false });
