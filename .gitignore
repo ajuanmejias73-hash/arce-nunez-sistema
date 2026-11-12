@@ -1,0 +1,24 @@
+# Dependencias y compilados
+node_modules/
+dist/
+.vite/
+
+# DATOS PRIVADOS: nunca en el repositorio público de la página.
+# (clientes, teléfonos, montos y los PIN). Van en el repositorio privado de datos.
+datos_iniciales/
+datos_prueba/
+ESPECIFICACION_*.md
+
+# Variables de entorno
+.env
+.env.*
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# Configuración local de Claude
+.claude/
