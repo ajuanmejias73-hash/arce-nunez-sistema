@@ -1,12 +1,16 @@
 <script lang="ts">
   import { CONEXION_PRUEBA, MODO_PRUEBA_DISPONIBLE, conexionGuardada, esPrueba, guardarConexion, olvidarConexion } from '../lib/conexion.ts';
   import { datos } from '../lib/datos.svelte.ts';
-  import { RepoDatos, type Conexion } from '../lib/github.ts';
+  import { ErrorGitHub, RepoDatos, type Conexion } from '../lib/github.ts';
   import { sesion } from '../lib/sesion.svelte.ts';
 
+  // Dónde están los datos de Arce Nuñez (ya escritos: solo hay que pegar el token).
+  const DUENO = 'ajuanmejias73-hash';
+  const REPOSITORIO = 'arce-nunez-datos';
+
   const previa = conexionGuardada();
-  let owner = $state(previa && !esPrueba(previa) ? previa.owner : '');
-  let repo = $state(previa && !esPrueba(previa) ? previa.repo : 'arce-nunez-datos');
+  let owner = $state(previa && !esPrueba(previa) ? previa.owner : DUENO);
+  let repo = $state(previa && !esPrueba(previa) ? previa.repo : REPOSITORIO);
   let token = $state('');
   let probando = $state(false);
   let error = $state('');
@@ -29,7 +33,12 @@
         error = datos.error;
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      // El error más común: el token se creó sin acceso a este repositorio.
+      if (e instanceof ErrorGitHub && e.estado === 404) {
+        error = `Ese token no tiene permiso sobre «${c.repo}». Hacé uno nuevo: en "Repository access" marcá "Only select repositories" y escogé ${c.repo}; en "Permissions", Contents → "Read and write". (Abajo: "¿Cómo se saca el token?")`;
+      } else {
+        error = e instanceof Error ? e.message : String(e);
+      }
     } finally {
       probando = false;
     }
@@ -80,17 +89,20 @@
 
       <form onsubmit={enviar} class="formulario">
         <label>
-          Usuario de GitHub dueño de los datos
-          <input bind:value={owner} autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ej. ajuanmejias73-hash" />
-        </label>
-        <label>
-          Nombre del repositorio de datos
-          <input bind:value={repo} autocomplete="off" autocapitalize="off" spellcheck="false" />
-        </label>
-        <label>
           Token de GitHub
-          <input type="password" bind:value={token} autocomplete="off" spellcheck="false" placeholder="github_pat_…" />
+          <input type="password" bind:value={token} autocomplete="off" spellcheck="false" placeholder="Pegá aquí el token (github_pat_…)" />
         </label>
+        <details class="avanzado">
+          <summary>Avanzado: dónde están los datos</summary>
+          <label>
+            Usuario de GitHub dueño de los datos
+            <input bind:value={owner} autocomplete="off" autocapitalize="off" spellcheck="false" />
+          </label>
+          <label>
+            Nombre del repositorio de datos
+            <input bind:value={repo} autocomplete="off" autocapitalize="off" spellcheck="false" />
+          </label>
+        </details>
         <button class="btn-dorado" type="submit" disabled={probando}>{probando ? 'Conectando…' : 'Conectar'}</button>
       </form>
 
@@ -99,11 +111,11 @@
       <details>
         <summary>¿Cómo se saca el token?</summary>
         <ol>
-          <li>Entrá a GitHub con la cuenta dueña de los datos.</li>
-          <li>Foto de perfil → <strong>Settings</strong> → <strong>Developer settings</strong> → <strong>Personal access tokens</strong> → <strong>Fine-grained tokens</strong> → <strong>Generate new token</strong>.</li>
-          <li>En <strong>Repository access</strong> escogé <strong>Only select repositories</strong> y marcá solo el repositorio de datos.</li>
-          <li>En <strong>Permissions → Contents</strong> escogé <strong>Read and write</strong>.</li>
-          <li>Ponele el vencimiento más largo que permita, tocá <strong>Generate token</strong>, copialo y pegalo aquí. Cuando venza, se saca otro igual.</li>
+          <li>Abrí <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">github.com/settings/personal-access-tokens/new</a> con la cuenta dueña de los datos.</li>
+          <li><strong>Token name:</strong> por ejemplo "Arce Nuñez - Pablo". <strong>Expiration:</strong> Custom, la fecha más lejana (hasta 1 año).</li>
+          <li><strong>Repository access:</strong> marcá <strong>Only select repositories</strong> y escogé <strong>arce-nunez-datos</strong>.</li>
+          <li><strong>Permissions:</strong> tocá <strong>+ Add permissions</strong>, escogé <strong>Contents</strong> y ponelo en <strong>Read and write</strong>.</li>
+          <li>Tocá <strong>Generate token</strong> (dos veces), copiá el código <code>github_pat_…</code> y pegalo arriba. Cuando venza, se saca otro igual.</li>
         </ol>
         <p class="ayuda">No le pasés el token a nadie: quien lo tenga puede ver y cambiar los datos.</p>
       </details>
@@ -175,6 +187,17 @@
   }
   .ancho {
     width: 100%;
+  }
+  .avanzado {
+    margin-top: 0;
+    font-size: 0.9rem;
+  }
+  .avanzado summary {
+    font-weight: 500;
+    color: var(--suave);
+  }
+  .avanzado label {
+    margin-top: 8px;
   }
   .cargando {
     color: var(--suave);
