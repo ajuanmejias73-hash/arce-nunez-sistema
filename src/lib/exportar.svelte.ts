@@ -1,6 +1,5 @@
 /**
- * Convierte la vista del cliente en PDF (tamaño carta A4, sin cortar renglones a la mitad)
- * o en imagen PNG para WhatsApp. Se dibuja una copia escondida de 800 px de ancho para que
+ * Convierte la vista del cliente en PDF (tamaño carta A4, sin cortar renglones a la mitad). Se dibuja una copia escondida de 800 px de ancho para que
  * salga igual desde la compu o desde el celular.
  */
 import { tick } from 'svelte';
@@ -57,9 +56,6 @@ class Exportador {
     return tarea;
   }
 
-  png(modelo: ModeloVista): Promise<Blob> {
-    return this.dibujar(modelo, (lienzo) => aBlob(lienzo, 'image/png'));
-  }
 
   pdf(modelo: ModeloVista): Promise<Blob> {
     return this.dibujar(modelo, async (lienzo, cortes, alto) => {
@@ -118,9 +114,6 @@ async function esperarImagenes(el: HTMLElement): Promise<void> {
   }
 }
 
-function aBlob(lienzo: HTMLCanvasElement, tipo: string): Promise<Blob> {
-  return new Promise((res, rej) => lienzo.toBlob((b) => (b ? res(b) : rej(new Error('No se pudo crear la imagen.'))), tipo));
-}
 
 export const exportador = new Exportador();
 

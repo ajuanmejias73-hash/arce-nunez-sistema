@@ -18,7 +18,7 @@
   const MAX_NOTAS = 6;
 
   let pestana = $state<'escribir' | 'vista'>('escribir');
-  let ocupado = $state<'' | 'guardar' | 'png' | 'pdf' | 'compartir-png' | 'compartir-pdf'>('');
+  let ocupado = $state<'' | 'guardar' | 'pdf' | 'compartir-pdf'>('');
   let campoCliente = $state<HTMLInputElement>();
 
   const resultado = $derived(editor.d && datos.c ? editor.vista() : null);
@@ -64,12 +64,12 @@
     }
   }
 
-  async function exportar(tipo: 'png' | 'pdf', modo: 'descargar' | 'compartir') {
+  async function exportar(modo: 'descargar' | 'compartir') {
     if (!resultado || !editor.d || (await faltaCliente())) return;
-    ocupado = modo === 'descargar' ? tipo : (`compartir-${tipo}` as const);
+    ocupado = modo === 'descargar' ? 'pdf' : 'compartir-pdf';
     try {
-      const blob = tipo === 'png' ? await exportador.png(resultado.vista) : await exportador.pdf(resultado.vista);
-      const nombre = `${nombreArchivo(editor.d.numero, editor.d.cliente.trim())}.${tipo}`;
+      const blob = await exportador.pdf(resultado.vista);
+      const nombre = `${nombreArchivo(editor.d.numero, editor.d.cliente.trim())}.pdf`;
       if (modo === 'descargar') descargar(blob, nombre);
       else await compartir(blob, nombre);
     } catch (e) {
@@ -236,16 +236,10 @@
         </button>
         <h3 class="sub">Enviar al cliente</h3>
         <div class="enviar">
-          <button class="btn-dorado" onclick={() => exportar('png', 'compartir')} disabled={!!ocupado}>
-            {ocupado === 'compartir-png' ? 'Preparando…' : 'WhatsApp: imagen'}
-          </button>
-          <button class="btn-dorado" onclick={() => exportar('pdf', 'compartir')} disabled={!!ocupado}>
+          <button class="btn-dorado" onclick={() => exportar('compartir')} disabled={!!ocupado}>
             {ocupado === 'compartir-pdf' ? 'Preparando…' : 'WhatsApp: PDF'}
           </button>
-          <button class="btn-borde" onclick={() => exportar('png', 'descargar')} disabled={!!ocupado}>
-            {ocupado === 'png' ? 'Preparando…' : 'Descargar imagen'}
-          </button>
-          <button class="btn-borde" onclick={() => exportar('pdf', 'descargar')} disabled={!!ocupado}>
+          <button class="btn-borde" onclick={() => exportar('descargar')} disabled={!!ocupado}>
             {ocupado === 'pdf' ? 'Preparando…' : 'Descargar PDF'}
           </button>
         </div>

@@ -7,7 +7,7 @@
   import { guardarNotasInternas, modificar, nombreDe, pdfDe, usarDeBase, vistaDe } from '../lib/abrir.ts';
   import { datos } from '../lib/datos.svelte.ts';
   import { dialogos } from '../lib/dialogos.svelte.ts';
-  import { compartir, descargar, exportador } from '../lib/exportar.svelte.ts';
+  import { compartir, descargar } from '../lib/exportar.svelte.ts';
   import { colones, fecha, fechaHora } from '../lib/formato.ts';
   import { rutas } from '../lib/rutas.svelte.ts';
   import SelectorEstado from '../componentes/SelectorEstado.svelte';
@@ -51,12 +51,12 @@
     }
   }
 
-  async function archivo(tipo: 'pdf' | 'png', modo: 'descargar' | 'compartir') {
+  async function archivo(modo: 'descargar' | 'compartir') {
     if (!c || !v) return;
-    ocupado = tipo + modo;
+    ocupado = 'pdf' + modo;
     try {
-      const blob = tipo === 'pdf' ? await pdfDe(v) : await exportador.png(vistaDe(v));
-      const nombre = `${nombreDe(c, v)}.${tipo}`;
+      const blob = await pdfDe(v);
+      const nombre = `${nombreDe(c, v)}.pdf`;
       if (modo === 'descargar') descargar(blob, nombre);
       else await compartir(blob, nombre);
     } catch (e) {
@@ -115,10 +115,8 @@
         </div>
         <h3 class="sub">Enviar al cliente</h3>
         <div class="enviar">
-          <button class="btn-dorado" onclick={() => archivo('png', 'compartir')} disabled={!!ocupado}>{ocupado === 'pngcompartir' ? 'Preparando…' : 'WhatsApp: imagen'}</button>
-          <button class="btn-dorado" onclick={() => archivo('pdf', 'compartir')} disabled={!!ocupado}>{ocupado === 'pdfcompartir' ? 'Preparando…' : 'WhatsApp: PDF'}</button>
-          <button class="btn-borde" onclick={() => archivo('png', 'descargar')} disabled={!!ocupado}>{ocupado === 'pngdescargar' ? 'Preparando…' : 'Descargar imagen'}</button>
-          <button class="btn-borde" onclick={() => archivo('pdf', 'descargar')} disabled={!!ocupado}>{ocupado === 'pdfdescargar' ? 'Preparando…' : 'Descargar PDF'}</button>
+          <button class="btn-dorado" onclick={() => archivo('compartir')} disabled={!!ocupado}>{ocupado === 'pdfcompartir' ? 'Preparando…' : 'WhatsApp: PDF'}</button>
+          <button class="btn-borde" onclick={() => archivo('descargar')} disabled={!!ocupado}>{ocupado === 'pdfdescargar' ? 'Preparando…' : 'Descargar PDF'}</button>
         </div>
       </section>
 

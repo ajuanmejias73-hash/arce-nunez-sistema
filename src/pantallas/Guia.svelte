@@ -14,7 +14,7 @@
       <li>Escribí las <strong>Partes del trabajo</strong>: una cosa por renglón (Enter crea el siguiente). Con "Lo ve / Oculto" decidís qué ve el cliente; lo oculto igual cuenta en el total.</li>
       <li>Tocá <strong>Ver cotización</strong> para verla como la ve el cliente.</li>
       <li>Tocá <strong>Guardar en historial</strong>. Queda como v1.</li>
-      <li>Mandala con <strong>WhatsApp: imagen</strong> o <strong>WhatsApp: PDF</strong>.</li>
+      <li>Mandala con <strong>WhatsApp: PDF</strong> (o <strong>Descargar PDF</strong> en la compu).</li>
     </ol>
     <p class="ayuda">Lo que escribís se guarda solo en el dispositivo mientras tanto: si se cierra la página, no se pierde.</p>
   </section>
