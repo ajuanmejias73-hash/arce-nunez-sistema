@@ -1,15 +1,56 @@
 <script lang="ts" module>
+  import type { PlanoTexto } from '../componentes/PlanoCalc.svelte';
+  import type { FormaManoObra } from '../lib/calculadoras.ts';
+
+  /** Medir con los m² directos o con largo × alto (metros lineales). */
+  type Modo = 'm2' | 'medidas';
+
   /** Valores de ejemplo con que arranca (y vuelve con "Limpiar") cada calculadora. */
   function ejemplos() {
     const vacia = () => ({ descripcion: '', largo: '', alto: '', cantidad: '1' });
     return {
       areas: {
-        superficies: [{ descripcion: 'Pared del frente', largo: '4', alto: '2.5', cantidad: '1' }, { descripcion: 'Paredes laterales', largo: '3', alto: '2.5', cantidad: '2' }, vacia(), vacia(), vacia(), vacia()],
-        aberturas: [{ descripcion: 'Puerta', largo: '0.9', alto: '2.1', cantidad: '1' }, { descripcion: 'Ventana', largo: '1.2', alto: '1', cantidad: '1' }, vacia(), vacia()],
+        superficies: [{ descripcion: 'Pared del frente', largo: '4', alto: '2.5', cantidad: '1' }, { descripcion: 'Paredes laterales', largo: '3', alto: '2.5', cantidad: '2' }, vacia()],
+        aberturas: [{ descripcion: 'Puerta', largo: '0.9', alto: '2.1', cantidad: '1' }, { descripcion: 'Ventana', largo: '1.2', alto: '1', cantidad: '1' }, vacia()],
       },
-      pintura: { m2: '50', manos: '2', sellador: false, desperdicio: '10' },
-      durock: { largo: '6', alto: '3', caras: '2', aberturas: '0', separacion: '0.41', esquineros: '0', repello: true, desperdicio: '10' },
-      ceramica: { m2: '20', desperdicio: '10', m2PorCaja: '1.5', nombre: 'Cerámica antideslizante' },
+      plano: {
+        alto: '2.50',
+        cuartos: [{ nombre: '', largo: '', ancho: '', estimado: false }],
+        aberturas: [{ tipo: 'Puerta' as 'Puerta' | 'Ventana', nombre: '', ancho: '', alto: '2.10', cantidad: '1', estimado: false }],
+        respuesta: '',
+      } satisfies PlanoTexto,
+      pisos: {
+        espacios: [
+          { nombre: 'Cuarto', largo: '3.5', ancho: '4' },
+          { nombre: 'Baño', largo: '2.25', ancho: '2.2' },
+          { nombre: '', largo: '', ancho: '' },
+        ],
+        ceramica: true,
+        desperdicio: '10',
+        m2PorCaja: '1.5',
+        nombreCeramica: 'Cerámica antideslizante',
+        rodapie: true,
+        anchoPuertas: '0',
+        contrapiso: false,
+        tipo: '',
+        espesor: '8',
+        desperdicioConcreto: '5',
+      },
+      pintura: { modo: 'm2' as Modo, m2: '50', largo: '10', alto: '2.5', manos: '2', sellador: false, desperdicio: '10' },
+      durock: {
+        modo: 'medidas' as Modo,
+        largo: '6',
+        alto: '3',
+        aberturas: '0',
+        m2Interna: '18',
+        m2Externa: '18',
+        interna: { lleva: true, lamina: 'Lámina Durock 1,22 x 2,44 m de 1/2"', repello: true },
+        externa: { lleva: true, lamina: 'Lámina Durock 1,22 x 2,44 m de 1/2"', repello: true },
+        separacion: '0.41',
+        esquineros: '0',
+        desperdicio: '10',
+      },
+      ceramica: { modo: 'm2' as Modo, m2: '20', largo: '5', ancho: '4', desperdicio: '10', m2PorCaja: '1.5', nombre: 'Cerámica antideslizante' },
       concreto: { tipo: '', largo: '3', ancho: '3', espesor: '10', cantidad: '1', desperdicio: '5' },
       techo: { largo: '4', ancho: '6', pendiente: '15', largoLamina: '3.66', anchoUtil: '0.80', lamina: 'Lámina de policarbonato', canoa: true },
       estructura: {
@@ -32,12 +73,16 @@
   const estado = $state(ejemplos());
   /** Lo que la persona cambió en "¿Agregar?" de cada resultado. */
   const marcas = $state<Record<string, Record<string, boolean>>>({});
+  /** Cuánto pide de más (+) o de menos (−) de cada material, por calculadora. */
+  const extra = $state<Record<string, Record<string, number>>>({});
   let pestanaGuardada: Calc | 'rendimientos' = 'areas';
 </script>
 
 <script lang="ts">
   import * as C from '../lib/calculadoras.ts';
-  import type { FormaManoObra, Resultado } from '../lib/calculadoras.ts';
+  import type { Resultado } from '../lib/calculadoras.ts';
+  import type { Plano } from '../lib/plano.ts';
+  import PlanoCalc from '../componentes/PlanoCalc.svelte';
   import { datos } from '../lib/datos.svelte.ts';
   import { dialogos } from '../lib/dialogos.svelte.ts';
   import { editor } from '../lib/editor.svelte.ts';
@@ -47,7 +92,9 @@
   import Rendimientos from '../componentes/Rendimientos.svelte';
 
   const PESTANAS: { id: Calc | 'rendimientos'; nombre: string }[] = [
+    { id: 'plano', nombre: '📐 Plano' },
     { id: 'areas', nombre: 'Áreas' },
+    { id: 'pisos', nombre: 'Pisos' },
     { id: 'pintura', nombre: 'Pintura' },
     { id: 'durock', nombre: 'Durock / gypsum' },
     { id: 'ceramica', nombre: 'Cerámica' },
@@ -81,25 +128,36 @@
   const mezcla = $derived(mezclas.find((m) => m.tipo === estado.concreto.tipo) ?? mezclas[0]);
   $effect(() => {
     if (mezclas[0] && !mezclas.some((m) => m.tipo === estado.concreto.tipo)) estado.concreto.tipo = mezclas[0].tipo;
+    // Contrapiso: por defecto la mezcla de 175 (la de pisos), o la primera.
+    if (mezclas[0] && !mezclas.some((m) => m.tipo === estado.pisos.tipo)) estado.pisos.tipo = (mezclas.find((m) => m.tipo.includes('175')) ?? mezclas[0]).tipo;
+  });
+
+  // m² según cómo se midió: directo, o largo × alto (metros lineales).
+  const m2Pintura = $derived(estado.pintura.modo === 'm2' ? n(estado.pintura.m2) : n(estado.pintura.largo) * n(estado.pintura.alto));
+  const m2Ceramica = $derived(estado.ceramica.modo === 'm2' ? n(estado.ceramica.m2) : n(estado.ceramica.largo) * n(estado.ceramica.ancho));
+  const m2Caras = $derived.by(() => {
+    const d = estado.durock;
+    if (d.modo === 'm2') return { interna: n(d.m2Interna), externa: n(d.m2Externa) };
+    const cara = Math.max(0, n(d.largo) * n(d.alto) - n(d.aberturas));
+    return { interna: cara, externa: cara };
   });
 
   const resultados = $derived<Record<Calc, Resultado | null>>({
     areas: area.resultado,
-    pintura: C.pintura({ m2: n(estado.pintura.m2), manos: n(estado.pintura.manos), sellador: estado.pintura.sellador, desperdicio: pct(estado.pintura.desperdicio) }, r),
-    durock: C.durock(
+    pintura: C.pintura({ m2: m2Pintura, manos: n(estado.pintura.manos), sellador: estado.pintura.sellador, desperdicio: pct(estado.pintura.desperdicio) }, r),
+    durock: C.paredes(
       {
         largo: n(estado.durock.largo),
         alto: n(estado.durock.alto),
-        caras: n(estado.durock.caras),
-        aberturas: n(estado.durock.aberturas),
         separacion: n(estado.durock.separacion),
         esquineros: n(estado.durock.esquineros),
-        repello: estado.durock.repello,
         desperdicio: pct(estado.durock.desperdicio),
+        interna: { ...estado.durock.interna, m2: m2Caras.interna },
+        externa: { ...estado.durock.externa, m2: m2Caras.externa },
       },
       r,
     ),
-    ceramica: C.ceramica({ m2: n(estado.ceramica.m2), desperdicio: pct(estado.ceramica.desperdicio), m2PorCaja: n(estado.ceramica.m2PorCaja), nombre: estado.ceramica.nombre }, r),
+    ceramica: C.ceramica({ m2: m2Ceramica, desperdicio: pct(estado.ceramica.desperdicio), m2PorCaja: n(estado.ceramica.m2PorCaja), nombre: estado.ceramica.nombre }, r),
     concreto: mezcla
       ? C.concreto({ mezcla, largo: n(estado.concreto.largo), ancho: n(estado.concreto.ancho), espesorCm: n(estado.concreto.espesor), cantidad: n(estado.concreto.cantidad), desperdicio: pct(estado.concreto.desperdicio) })
       : null,
@@ -121,15 +179,69 @@
     ),
     mano: C.manoDeObra({ forma: estado.mano.forma, cantidad: n(estado.mano.cantidad), precio: n(estado.mano.precio), personas: n(estado.mano.personas), imprevistos: pct(estado.mano.imprevistos) }),
     conversion: null,
+    plano: null,
+    pisos: C.pisos(
+      estado.pisos.espacios.map((e) => ({ nombre: e.nombre, largo: n(e.largo), ancho: n(e.ancho) })),
+      {
+        ceramica: estado.pisos.ceramica,
+        desperdicio: pct(estado.pisos.desperdicio),
+        m2PorCaja: n(estado.pisos.m2PorCaja),
+        nombreCeramica: estado.pisos.nombreCeramica,
+        rodapie: estado.pisos.rodapie,
+        anchoPuertas: n(estado.pisos.anchoPuertas),
+        contrapiso: estado.pisos.contrapiso,
+        mezcla: mezclas.find((m) => m.tipo === estado.pisos.tipo) ?? mezclas[0] ?? null,
+        espesorCm: n(estado.pisos.espesor),
+        desperdicioConcreto: pct(estado.pisos.desperdicioConcreto),
+      },
+      r,
+    ),
   });
 
-  /** El resultado de la pestaña, con las marcas de "¿Agregar?" que cambió la persona. */
+  // ---- Plano → otras calculadoras ----
+  const texto = (x: number) => String(Math.round(x * 100) / 100);
+
+  function pasarAPisos(plano: Plano, anchoPuertas: number) {
+    estado.pisos.espacios = plano.cuartos.filter((c) => c.largo > 0 && c.ancho > 0).map((c) => ({ nombre: c.nombre, largo: texto(c.largo), ancho: texto(c.ancho) }));
+    estado.pisos.anchoPuertas = texto(anchoPuertas);
+    pestana = 'pisos';
+    dialogos.avisar('Espacios pasados a Pisos. Escogé si lleva cerámica, rodapié o contrapiso.');
+  }
+
+  async function pasarAAreas(plano: Plano, cuartos: { nombre: string; perimetro: number }[]) {
+    const ok = await dialogos.confirmar('¿Pasar las paredes a Áreas?', 'Lo que hay ahora en Áreas se reemplaza por las paredes y aberturas del plano.', { si: 'Pasar' });
+    if (!ok) return;
+    estado.areas.superficies = cuartos.map((c) => ({ descripcion: `Paredes de ${c.nombre}`, largo: texto(c.perimetro), alto: texto(plano.altoParedes), cantidad: '1' }));
+    estado.areas.aberturas = plano.aberturas
+      .filter((a) => a.ancho > 0 && a.alto > 0)
+      .map((a) => ({ descripcion: a.nombre, largo: texto(a.ancho), alto: texto(a.alto), cantidad: String(a.cantidad || 1) }));
+    pestana = 'areas';
+    dialogos.avisar('Paredes pasadas a Áreas. Desde Pintura o Cerámica podés usar el área neta.');
+  }
+
+  function agregarResumenPlano(renglon: string) {
+    paraAgregar = { renglon, materiales: [] };
+  }
+
+  const redondo = (x: number) => Math.round(x * 100) / 100;
+
+  /**
+   * El resultado de la pestaña con lo que cambió la persona: "¿Agregar?" y cuánto pide
+   * de más o de menos (se guarda la diferencia, así si cambian las medidas se mantiene).
+   */
   const actual = $derived.by(() => {
     if (pestana === 'rendimientos') return null;
     const res = resultados[pestana];
     if (!res) return null;
     const m = marcas[pestana] ?? {};
-    return { ...res, materiales: res.materiales.map((x) => ({ ...x, agregar: m[x.material] ?? x.agregar })) };
+    const d = extra[pestana] ?? {};
+    return {
+      ...res,
+      materiales: res.materiales.map((x) => {
+        const cantidad = Math.max(0, redondo(x.cantidad + (d[x.material] ?? 0)));
+        return { ...x, cantidad, calculado: x.cantidad, agregar: (m[x.material] ?? x.agregar) && cantidad > 0 };
+      }),
+    };
   });
 
   const precioDe = (nombre: string) => catalogo.find((m) => m.material === nombre)?.precio ?? null;
@@ -138,6 +250,17 @@
     if (pestana === 'rendimientos') return;
     (marcas[pestana] ??= {})[nombre] = valor;
   }
+
+  /** Pedir otra cantidad distinta a la calculada. */
+  function pedir(nombre: string, calculado: number, nueva: number) {
+    if (pestana === 'rendimientos' || !Number.isFinite(nueva)) return;
+    (extra[pestana] ??= {})[nombre] = redondo(Math.max(0, nueva) - calculado);
+    // Si pide algo de un material que estaba en 0 o sin marcar, se marca para agregar.
+    if (nueva > 0) (marcas[pestana] ??= {})[nombre] = true;
+  }
+
+  /** De a 1 para unidades, sacos y láminas; de a 0.1 para m³ o cantidades con decimales. */
+  const paso = (calculado: number, unidad: string) => (unidad === 'm³' || !Number.isInteger(calculado) ? 0.1 : 1);
 
   let paraAgregar = $state<Resultado | null>(null);
 
@@ -152,6 +275,7 @@
     const e = ejemplos();
     (estado as Record<string, unknown>)[pestana] = e[pestana];
     delete marcas[pestana];
+    delete extra[pestana];
   }
 
   function elegirServicio() {
@@ -191,6 +315,14 @@
   <label class="casilla"><input type="checkbox" checked={obj[clave] as boolean} onchange={(e) => (obj[clave] = e.currentTarget.checked)} /> {etiqueta}</label>
 {/snippet}
 
+{#snippet medirPor(obj: { modo: 'm2' | 'medidas' }, medidas: string)}
+  <div class="medir" role="radiogroup" aria-label="Medir por">
+    <span>Medir por:</span>
+    <label class:activo={obj.modo === 'medidas'}><input type="radio" name="medir" checked={obj.modo === 'medidas'} onchange={() => (obj.modo = 'medidas')} /> {medidas}</label>
+    <label class:activo={obj.modo === 'm2'}><input type="radio" name="medir" checked={obj.modo === 'm2'} onchange={() => (obj.modo = 'm2')} /> m² directo</label>
+  </div>
+{/snippet}
+
 {#snippet usarArea(obj: Record<string, unknown>, clave: string)}
   {#if area.neta > 0 && n(obj[clave] as string) !== area.neta}
     <button class="enlace" onclick={() => (obj[clave] = String(area.neta))}>Usar el área neta de "Áreas": {C.num(area.neta)} m²</button>
@@ -199,6 +331,8 @@
 
 {#if pestana === 'rendimientos'}
   <Rendimientos />
+{:else if pestana === 'plano'}
+  <PlanoCalc p={estado.plano} {pasarAPisos} {pasarAAreas} agregar={agregarResumenPlano} />
 {:else}
   <section class="tarjeta calc">
     <div class="datos">
@@ -207,16 +341,18 @@
       {#if pestana === 'areas'}
         <h3>Superficies</h3>
         <div class="filas">
-          <div class="fila cabeza" aria-hidden="true"><span>Descripción</span><span>Largo (m)</span><span>Alto (m)</span><span>Cantidad</span></div>
+          <div class="fila cabeza" aria-hidden="true"><span>Descripción</span><span>Largo (m)</span><span>Alto (m)</span><span>Cantidad</span><span></span></div>
           {#each estado.areas.superficies as s, i}
             <div class="fila">
               <input bind:value={s.descripcion} aria-label="Superficie {i + 1}" placeholder="Superficie {i + 1}" />
               <input bind:value={s.largo} inputmode="decimal" aria-label="Largo {i + 1}" />
               <input bind:value={s.alto} inputmode="decimal" aria-label="Alto {i + 1}" />
               <input bind:value={s.cantidad} inputmode="decimal" aria-label="Cantidad {i + 1}" />
+              <button class="quitar" onclick={() => estado.areas.superficies.splice(i, 1)} aria-label="Quitar superficie {i + 1}">×</button>
             </div>
           {/each}
         </div>
+        <button class="btn-borde btn-chico" onclick={() => estado.areas.superficies.push({ descripcion: '', largo: '', alto: '', cantidad: '1' })}>+ Superficie</button>
         <h3>Aberturas que se restan (puertas, ventanas)</h3>
         <div class="filas">
           {#each estado.areas.aberturas as s, i}
@@ -225,42 +361,121 @@
               <input bind:value={s.largo} inputmode="decimal" aria-label="Ancho abertura {i + 1}" />
               <input bind:value={s.alto} inputmode="decimal" aria-label="Alto abertura {i + 1}" />
               <input bind:value={s.cantidad} inputmode="decimal" aria-label="Cantidad abertura {i + 1}" />
+              <button class="quitar" onclick={() => estado.areas.aberturas.splice(i, 1)} aria-label="Quitar abertura {i + 1}">×</button>
             </div>
           {/each}
         </div>
+        <button class="btn-borde btn-chico" onclick={() => estado.areas.aberturas.push({ descripcion: '', largo: '', alto: '', cantidad: '1' })}>+ Abertura</button>
         <div class="totales">
           <span>Bruta: <strong>{C.num(area.bruta)} m²</strong></span>
           <span>Aberturas: <strong>−{C.num(area.aberturas)} m²</strong></span>
           <span>Neta: <strong>{C.num(area.neta)} m²</strong></span>
         </div>
         <p class="ayuda">Pintura, Cerámica y Mano de obra pueden tomar esta área neta con un toque.</p>
-      {:else if pestana === 'pintura'}
+      {:else if pestana === 'pisos'}
+        <h3>Espacios</h3>
+        <div class="filas">
+          <div class="fila cabeza pisos" aria-hidden="true"><span>Nombre</span><span>Largo (m)</span><span>Ancho (m)</span><span></span></div>
+          {#each estado.pisos.espacios as e, i}
+            <div class="fila pisos">
+              <input bind:value={e.nombre} aria-label="Espacio {i + 1}" placeholder="Espacio {i + 1}" />
+              <input bind:value={e.largo} inputmode="decimal" aria-label="Largo {i + 1}" />
+              <input bind:value={e.ancho} inputmode="decimal" aria-label="Ancho {i + 1}" />
+              <button class="quitar" onclick={() => estado.pisos.espacios.splice(i, 1)} aria-label="Quitar espacio {i + 1}">×</button>
+            </div>
+          {/each}
+        </div>
+        <button class="btn-borde btn-chico" onclick={() => estado.pisos.espacios.push({ nombre: '', largo: '', ancho: '' })}>+ Espacio</button>
+
+        <h3>¿Qué lleva?</h3>
         <div class="campos">
-          {@render campo('Área (m²)', estado.pintura, 'm2')}
+          {@render siNo('Cerámica o porcelanato', estado.pisos, 'ceramica')}
+          {@render siNo('Rodapié', estado.pisos, 'rodapie')}
+          {@render siNo('Contrapiso de concreto', estado.pisos, 'contrapiso')}
+        </div>
+        {#if estado.pisos.ceramica || estado.pisos.rodapie}
+          <h3>Cerámica y rodapié</h3>
+          <div class="campos">
+            {#if estado.pisos.ceramica}
+              <label>Nombre de la cerámica <input bind:value={estado.pisos.nombreCeramica} list="calc-materiales" /></label>
+              {@render campo('m² por caja', estado.pisos, 'm2PorCaja')}
+            {/if}
+            {@render campo('Desperdicio (%)', estado.pisos, 'desperdicio', '10% normal, 15% en diagonal')}
+            {#if estado.pisos.rodapie}{@render campo('Ancho total de puertas (m)', estado.pisos, 'anchoPuertas', 'Ahí no va rodapié')}{/if}
+          </div>
+        {/if}
+        {#if estado.pisos.contrapiso}
+          <h3>Contrapiso</h3>
+          <div class="campos">
+            <label>
+              Mezcla
+              <select bind:value={estado.pisos.tipo}>
+                {#each mezclas as m}<option value={m.tipo}>{m.tipo}</option>{/each}
+              </select>
+            </label>
+            {@render campo('Espesor (cm)', estado.pisos, 'espesor')}
+            {@render campo('Desperdicio del concreto (%)', estado.pisos, 'desperdicioConcreto')}
+          </div>
+        {/if}
+      {:else if pestana === 'pintura'}
+        {@render medirPor(estado.pintura, 'Largo × alto')}
+        <div class="campos">
+          {#if estado.pintura.modo === 'm2'}
+            {@render campo('Área (m²)', estado.pintura, 'm2')}
+          {:else}
+            {@render campo('Largo (metros lineales)', estado.pintura, 'largo')}
+            {@render campo('Alto (m)', estado.pintura, 'alto')}
+          {/if}
           {@render campo('Manos', estado.pintura, 'manos')}
           {@render campo('Desperdicio (%)', estado.pintura, 'desperdicio')}
           {@render siNo('¿Lleva sellador?', estado.pintura, 'sellador')}
         </div>
-        {@render usarArea(estado.pintura, 'm2')}
+        {#if estado.pintura.modo === 'medidas'}<p class="ayuda">Área: {C.num(Math.round(m2Pintura * 100) / 100)} m²</p>{/if}
+        {#if estado.pintura.modo === 'm2'}{@render usarArea(estado.pintura, 'm2')}{/if}
       {:else if pestana === 'durock'}
+        {@render medirPor(estado.durock, 'Largo × alto')}
         <div class="campos">
-          {@render campo('Largo (m)', estado.durock, 'largo')}
-          {@render campo('Alto (m)', estado.durock, 'alto')}
-          {@render campo('Caras', estado.durock, 'caras')}
-          {@render campo('Aberturas (m²)', estado.durock, 'aberturas')}
+          {#if estado.durock.modo === 'medidas'}
+            {@render campo('Largo (metros lineales)', estado.durock, 'largo')}
+            {@render campo('Alto (m)', estado.durock, 'alto')}
+            {@render campo('Puertas y ventanas (m²)', estado.durock, 'aberturas', 'Se restan de cada cara')}
+          {:else}
+            {@render campo('m² de la cara interna', estado.durock, 'm2Interna')}
+            {@render campo('m² de la cara externa', estado.durock, 'm2Externa')}
+            {@render campo('Largo (m) para la estructura', estado.durock, 'largo', 'Opcional: para studs y tracks')}
+            {@render campo('Alto (m) para la estructura', estado.durock, 'alto')}
+          {/if}
+        </div>
+        <div class="caras">
+          {#each [{ c: estado.durock.interna, t: 'Cara interna', m2: m2Caras.interna }, { c: estado.durock.externa, t: 'Cara externa', m2: m2Caras.externa }] as x}
+            <fieldset class="cara" class:apagada={!x.c.lleva}>
+              <legend><label class="casilla"><input type="checkbox" bind:checked={x.c.lleva} /> {x.t}</label></legend>
+              <label>Lámina <input bind:value={x.c.lamina} list="calc-materiales" disabled={!x.c.lleva} /></label>
+              <label class="casilla"><input type="checkbox" bind:checked={x.c.repello} disabled={!x.c.lleva} /> Lleva repello en saco</label>
+              {#if x.c.lleva}<p class="ayuda">{C.num(Math.round(x.m2 * 100) / 100)} m²</p>{/if}
+            </fieldset>
+          {/each}
+        </div>
+        <div class="campos">
           {@render campo('Separación de studs (m)', estado.durock, 'separacion')}
           {@render campo('Esquineros', estado.durock, 'esquineros')}
           {@render campo('Desperdicio (%)', estado.durock, 'desperdicio')}
-          {@render siNo('¿Repello en saco?', estado.durock, 'repello')}
         </div>
       {:else if pestana === 'ceramica'}
+        {@render medirPor(estado.ceramica, 'Largo × ancho')}
         <div class="campos">
-          {@render campo('Área (m²)', estado.ceramica, 'm2')}
+          {#if estado.ceramica.modo === 'm2'}
+            {@render campo('Área (m²)', estado.ceramica, 'm2')}
+          {:else}
+            {@render campo('Largo (m)', estado.ceramica, 'largo')}
+            {@render campo('Ancho (m)', estado.ceramica, 'ancho')}
+          {/if}
           {@render campo('Desperdicio (%)', estado.ceramica, 'desperdicio', '10% normal, 15% en diagonal')}
           {@render campo('m² por caja', estado.ceramica, 'm2PorCaja')}
           <label>Nombre de la cerámica <input bind:value={estado.ceramica.nombre} list="calc-materiales" /></label>
         </div>
-        {@render usarArea(estado.ceramica, 'm2')}
+        {#if estado.ceramica.modo === 'medidas'}<p class="ayuda">Área: {C.num(Math.round(m2Ceramica * 100) / 100)} m²</p>{/if}
+        {#if estado.ceramica.modo === 'm2'}{@render usarArea(estado.ceramica, 'm2')}{/if}
       {:else if pestana === 'concreto'}
         <div class="campos">
           <label>
@@ -287,16 +502,18 @@
         </div>
       {:else if pestana === 'estructura'}
         <div class="filas">
-          <div class="fila cabeza estructura" aria-hidden="true"><span>Material</span><span>Medida de cada corte (m)</span><span>N.º de cortes</span><span>Largo de pieza (m)</span></div>
+          <div class="fila cabeza estructura" aria-hidden="true"><span>Material</span><span>Medida de cada corte (m)</span><span>N.º de cortes</span><span>Largo de pieza (m)</span><span></span></div>
           {#each estado.estructura.filas as f, i}
             <div class="fila estructura">
               <input bind:value={f.material} list="calc-materiales" aria-label="Material {i + 1}" placeholder="Material {i + 1}" />
               <input bind:value={f.medida} inputmode="decimal" aria-label="Medida {i + 1}" />
               <input bind:value={f.cortes} inputmode="decimal" aria-label="Cortes {i + 1}" />
               <input bind:value={f.largoPieza} inputmode="decimal" aria-label="Largo de pieza {i + 1}" />
+              <button class="quitar" onclick={() => estado.estructura.filas.splice(i, 1)} aria-label="Quitar fila {i + 1}">×</button>
             </div>
           {/each}
         </div>
+        <button class="btn-borde btn-chico" onclick={() => estado.estructura.filas.push({ material: '', medida: '', cortes: '', largoPieza: '6' })}>+ Fila</button>
         <div class="campos">{@render campo('Desperdicio (%)', estado.estructura, 'desperdicio')}</div>
       {:else if pestana === 'mano'}
         <div class="campos">
@@ -339,22 +556,43 @@
         {#if actual.monto !== undefined}<p class="monto">Monto: <strong>{colones(actual.monto)}</strong></p>{/if}
 
         {#if actual.materiales.length}
+          <div class="envoltura-resultados">
           <table class="tabla resultados">
-            <thead><tr><th>Material</th><th class="num">Cantidad</th><th>¿Agregar?</th></tr></thead>
+            <thead><tr><th>Material</th><th class="num">Pedir</th><th title="¿Agregar a la cotización?">Agregar</th></tr></thead>
             <tbody>
-              {#each actual.materiales as m}
+              {#each actual.materiales as m (m.material)}
                 {@const precio = precioDe(m.material)}
-                <tr class:apagado={!m.agregar || m.cantidad <= 0}>
+                {@const calc = m.calculado ?? m.cantidad}
+                {@const p = paso(calc, m.unidad)}
+                <tr class:apagado={!m.agregar}>
                   <td>
-                    {m.material}
+                    {m.material} <span class="unidad">({m.unidad})</span>
                     {#if precio !== null && m.cantidad > 0}<small class="precio">{colones(precio)} c/u · {colones(precio * m.cantidad)}</small>{/if}
                   </td>
-                  <td class="num">{C.num(m.cantidad)} {m.unidad}</td>
+                  <td class="num">
+                    <div class="pedir">
+                      <button class="mas-menos" onclick={() => pedir(m.material, calc, m.cantidad - p)} disabled={m.cantidad <= 0} aria-label="Pedir menos {m.material}">−</button>
+                      <input
+                        value={C.num(m.cantidad).replace(/,/g, '')}
+                        onchange={(e) => pedir(m.material, calc, aNumero(e.currentTarget.value) ?? calc)}
+                        inputmode="decimal"
+                        aria-label="Cantidad a pedir de {m.material}"
+                      />
+                      <button class="mas-menos" onclick={() => pedir(m.material, calc, m.cantidad + p)} aria-label="Pedir más {m.material}">+</button>
+                    </div>
+                    {#if m.cantidad !== calc}
+                      <small class="calculado">
+                        calculado: {C.num(calc)} · {m.cantidad > calc ? '+' : '−'}{C.num(Math.abs(redondo(m.cantidad - calc)))}
+                        <button class="enlace" onclick={() => pedir(m.material, calc, calc)}>volver</button>
+                      </small>
+                    {/if}
+                  </td>
                   <td><input type="checkbox" checked={m.agregar} disabled={m.cantidad <= 0} onchange={(e) => marcar(m.material, e.currentTarget.checked)} aria-label="Agregar {m.material}" /></td>
                 </tr>
               {/each}
             </tbody>
           </table>
+          </div>
         {/if}
 
         <div class="acciones pie">
@@ -407,7 +645,7 @@
   }
   .calc {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 24px;
     container-type: inline-size;
   }
@@ -421,12 +659,30 @@
   }
   .fila {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 34px;
     gap: 6px;
+    align-items: center;
+  }
+  .fila.pisos {
+    grid-template-columns: 2fr 1fr 1fr 34px;
   }
   .fila input {
     margin: 0;
     min-width: 0;
+  }
+  .filas + :global(.btn-chico) {
+    margin-top: 8px;
+  }
+  .quitar {
+    background: transparent;
+    border: none;
+    color: var(--suave);
+    font-size: 1.3rem;
+    padding: 0;
+    min-height: 38px;
+  }
+  .quitar:hover {
+    color: var(--rojo);
   }
   .fila.cabeza {
     font-size: 0.78rem;
@@ -485,8 +741,117 @@
     margin-top: 10px;
     background: var(--blanco);
   }
-  .resultados td {
-    padding: 6px 8px;
+  .resultados td,
+  .resultados th {
+    padding: 6px 5px;
+  }
+  .resultados td:first-child {
+    font-size: 0.88rem;
+  }
+  .envoltura-resultados {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .pedir {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pedir input {
+    width: 54px;
+    min-width: 0 !important;
+    min-height: 34px;
+    margin: 0;
+    padding: 4px 6px;
+    text-align: right;
+  }
+  .mas-menos {
+    min-height: 34px;
+    width: 30px;
+    flex: 0 0 auto;
+    padding: 0;
+    border-radius: 8px;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .mas-menos:hover:not(:disabled) {
+    border-color: var(--dorado);
+  }
+  .unidad {
+    min-width: 0;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--suave);
+  }
+  .calculado {
+    display: block;
+    color: #8a6400;
+    font-size: 0.78rem;
+    margin-top: 2px;
+  }
+  .calculado .enlace {
+    font-size: 0.78rem;
+    padding: 0 0 0 4px;
+  }
+  .medir {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: var(--suave);
+  }
+  .medir label {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid var(--linea);
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+    color: var(--texto);
+    font-weight: 500;
+  }
+  .medir label.activo {
+    background: var(--carbon);
+    color: var(--dorado-claro);
+    border-color: var(--carbon);
+  }
+  .medir input {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+  }
+  .caras {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .cara {
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    padding: 8px 12px 10px;
+    margin: 0;
+    display: grid;
+    gap: 6px;
+  }
+  .cara.apagada {
+    opacity: 0.6;
+  }
+  .cara legend {
+    padding: 0 4px;
+  }
+  .cara .ayuda {
+    margin: 0;
+  }
+  @media (max-width: 560px) {
+    .caras {
+      grid-template-columns: 1fr;
+    }
   }
   .precio {
     display: block;
@@ -517,7 +882,10 @@
   }
   @media (max-width: 560px) {
     .fila {
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr 34px;
+    }
+    .fila.pisos {
+      grid-template-columns: 1fr 1fr 34px;
     }
     .fila > input:first-child {
       grid-column: 1 / -1;

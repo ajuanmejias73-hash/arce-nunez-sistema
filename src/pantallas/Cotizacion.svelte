@@ -237,13 +237,13 @@
         <h3 class="sub">Enviar al cliente</h3>
         <div class="enviar">
           <button class="btn-dorado" onclick={() => exportar('compartir')} disabled={!!ocupado}>
-            {ocupado === 'compartir-pdf' ? 'Preparando…' : 'WhatsApp: PDF'}
+            {ocupado === 'compartir-pdf' ? 'Preparando…' : 'Enviar por WhatsApp'}
           </button>
           <button class="btn-borde" onclick={() => exportar('descargar')} disabled={!!ocupado}>
             {ocupado === 'pdf' ? 'Preparando…' : 'Descargar PDF'}
           </button>
         </div>
-        <p class="ayuda">En el celular, "WhatsApp" abre el menú para compartir. En la compu se descarga el archivo.</p>
+        <p class="ayuda">En el celular, "Enviar por WhatsApp" abre el menú para compartir: escogé WhatsApp y el contacto. Si un aparato no puede compartir, el PDF se descarga.</p>
       </section>
     </aside>
   </div>

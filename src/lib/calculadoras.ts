@@ -12,6 +12,8 @@ export interface ResultadoMaterial {
   unidad: string;
   /** Si se agrega a la cotización (la persona lo puede cambiar). */
   agregar: boolean;
+  /** Lo que dio la cuenta, cuando la persona pidió de más o de menos (cantidad = lo que pide). */
+  calculado?: number;
 }
 
 export interface Resultado {
@@ -116,6 +118,71 @@ export function durock(
       { material: NOMBRES.esquinero, cantidad: Math.round(pos(e.esquineros)), unidad: 'unid', agregar: true },
     ],
     extras: [{ etiqueta: 'Área a forrar', valor: `${num(dos(m2))} m²` }],
+  };
+}
+
+// 3b. Paredes con cara interna y cara externa ---------------------------------
+
+export interface Cara {
+  lleva: boolean;
+  /** m² de esta cara (ya sin aberturas). */
+  m2: number;
+  lamina: string;
+  repello: boolean;
+}
+
+/**
+ * Paredes de gypsum / Durock con cada cara por aparte (cada una con su lámina).
+ * La estructura (studs y tracks) sale del largo y el alto, si se dieron.
+ */
+export function paredes(
+  e: { largo: number; alto: number; separacion: number; esquineros: number; desperdicio: number; interna: Cara; externa: Cara },
+  r: Rendimientos,
+): Resultado {
+  const largo = pos(e.largo);
+  const alto = pos(e.alto);
+  const caras = [
+    { nombre: 'interna', ...e.interna },
+    { nombre: 'externa', ...e.externa },
+  ].filter((c) => c.lleva && pos(c.m2) > 0);
+  const totalM2 = caras.reduce((s, c) => s + c.m2, 0);
+  const materiales: ResultadoMaterial[] = [];
+
+  // Láminas: se juntan las caras que usan la misma lámina y se redondea una sola vez.
+  const porLamina = new Map<string, number>();
+  for (const c of caras) {
+    const nombre = c.lamina.trim() || NOMBRES.durock;
+    porLamina.set(nombre, (porLamina.get(nombre) ?? 0) + c.m2);
+  }
+  let laminas = 0;
+  for (const [nombre, m2] of porLamina) {
+    const cant = arriba((m2 / r.m2PorLamina) * (1 + pos(e.desperdicio)));
+    laminas += cant;
+    materiales.push({ material: nombre, cantidad: cant, unidad: 'lámina', agregar: true });
+  }
+
+  const studs = e.separacion > 0 && largo > 0 && alto > 0 ? (arriba(largo / e.separacion) + 1) * arriba(alto / r.largoStudTrack) : 0;
+  const m2Repello = caras.filter((c) => c.repello).reduce((s, c) => s + c.m2, 0);
+  materiales.push(
+    { material: NOMBRES.stud, cantidad: studs, unidad: 'unid', agregar: true },
+    { material: NOMBRES.track, cantidad: largo > 0 ? arriba((2 * largo) / r.largoStudTrack) : 0, unidad: 'unid', agregar: true },
+    { material: NOMBRES.tornilloDurock, cantidad: laminas * r.tornillosPorLamina, unidad: 'unid', agregar: true },
+    { material: NOMBRES.malla, cantidad: arriba((totalM2 * r.mallaMPorM2) / r.metrosPorRolloMalla), unidad: 'rollo', agregar: true },
+    { material: NOMBRES.repello, cantidad: arriba(m2Repello / r.repelloM2PorSaco), unidad: 'saco', agregar: true },
+    { material: NOMBRES.esquinero, cantidad: Math.round(pos(e.esquineros)), unidad: 'unid', agregar: true },
+  );
+
+  const corta = (n: string) => n.replace(/\s*1,22.*$/, '').replace(/^Lámina\s+(de\s+)?/i, '').trim() || n;
+  const partes = caras.map((c) => `cara ${c.nombre} en ${corta(c.lamina.trim() || NOMBRES.durock)} (${num(dos(c.m2))} m²)`);
+  const medida = largo > 0 && alto > 0 ? `Pared de ${num(largo)} m x ${num(alto)} m` : 'Paredes';
+  return {
+    renglon: partes.length ? `${medida}: ${partes.join(' y ')}.` : `${medida}: sin caras para forrar.`,
+    materiales,
+    extras: [
+      ...caras.map((c) => ({ etiqueta: `Cara ${c.nombre}`, valor: `${num(dos(c.m2))} m²` })),
+      { etiqueta: 'Total a forrar', valor: `${num(dos(totalM2))} m²` },
+      ...(studs === 0 ? [{ etiqueta: 'Studs y tracks', valor: 'escribí el largo y el alto para calcularlos' }] : []),
+    ],
   };
 }
 
@@ -243,4 +310,59 @@ export function conversiones(valor: number, metrosPorVara: number) {
     { de: 'varas', a: 'm', valor: v * metrosPorVara },
     { de: 'galones', a: 'litros', valor: v * 3.785 },
   ];
+}
+
+// 10. Pisos ------------------------------------------------------------------
+
+export interface Espacio {
+  nombre: string;
+  largo: number;
+  ancho: number;
+}
+
+export interface OpcionesPiso {
+  ceramica: boolean;
+  desperdicio: number;
+  m2PorCaja: number;
+  nombreCeramica: string;
+  rodapie: boolean;
+  /** Ancho total de puertas: ahí no va rodapié. */
+  anchoPuertas: number;
+  contrapiso: boolean;
+  mezcla: Mezcla | null;
+  espesorCm: number;
+  desperdicioConcreto: number;
+}
+
+/** Piso por espacios: área total y, según lo que lleve, cerámica, rodapié y contrapiso. */
+export function pisos(espacios: Espacio[], o: OpcionesPiso, r: Rendimientos): Resultado {
+  const validos = espacios.filter((e) => pos(e.largo) > 0 && pos(e.ancho) > 0);
+  const area = dos(validos.reduce((s, e) => s + e.largo * e.ancho, 0));
+  const perimetro = dos(validos.reduce((s, e) => s + 2 * (e.largo + e.ancho), 0));
+  const rodapieM = dos(Math.max(0, perimetro - pos(o.anchoPuertas)));
+  const materiales: ResultadoMaterial[] = [];
+  const extras: { etiqueta: string; valor: string }[] = [
+    { etiqueta: 'Área total de piso', valor: `${num(area)} m²` },
+    { etiqueta: 'Perímetro total', valor: `${num(perimetro)} m` },
+  ];
+  if (o.ceramica) {
+    const c = ceramica({ m2: area, desperdicio: o.desperdicio, m2PorCaja: o.m2PorCaja, nombre: o.nombreCeramica }, r);
+    materiales.push(...c.materiales);
+    extras.push(...(c.extras ?? []));
+  }
+  if (o.rodapie) {
+    materiales.push({ material: 'Rodapié', cantidad: arriba(rodapieM * (1 + pos(o.desperdicio))), unidad: 'm', agregar: true });
+    extras.push({ etiqueta: 'Rodapié (sin contar puertas)', valor: `${num(rodapieM)} m` });
+  }
+  if (o.contrapiso && o.mezcla && area > 0) {
+    const c = concreto({ mezcla: o.mezcla, largo: area, ancho: 1, espesorCm: o.espesorCm, cantidad: 1, desperdicio: o.desperdicioConcreto });
+    materiales.push(...c.materiales);
+    extras.push(...(c.extras ?? []).map((x) => (x.etiqueta === 'Volumen' ? { etiqueta: 'Concreto del contrapiso', valor: x.valor } : x)));
+  }
+  const que = [o.ceramica ? 'cerámica' : '', o.contrapiso ? `contrapiso de ${num(pos(o.espesorCm))} cm` : ''].filter(Boolean).join(' y ');
+  return {
+    renglon: `Piso${que ? ' (' + que + ')' : ''}: ${num(area)} m² en ${validos.length} ${validos.length === 1 ? 'espacio' : 'espacios'}.`,
+    materiales,
+    extras,
+  };
 }

@@ -115,7 +115,7 @@
         </div>
         <h3 class="sub">Enviar al cliente</h3>
         <div class="enviar">
-          <button class="btn-dorado" onclick={() => archivo('compartir')} disabled={!!ocupado}>{ocupado === 'pdfcompartir' ? 'Preparando…' : 'WhatsApp: PDF'}</button>
+          <button class="btn-dorado" onclick={() => archivo('compartir')} disabled={!!ocupado}>{ocupado === 'pdfcompartir' ? 'Preparando…' : 'Enviar por WhatsApp'}</button>
           <button class="btn-borde" onclick={() => archivo('descargar')} disabled={!!ocupado}>{ocupado === 'pdfdescargar' ? 'Preparando…' : 'Descargar PDF'}</button>
         </div>
       </section>

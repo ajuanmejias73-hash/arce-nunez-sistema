@@ -14,7 +14,7 @@
       <li>Escribí las <strong>Partes del trabajo</strong>: una cosa por renglón (Enter crea el siguiente). Con "Lo ve / Oculto" decidís qué ve el cliente; lo oculto igual cuenta en el total.</li>
       <li>Tocá <strong>Ver cotización</strong> para verla como la ve el cliente.</li>
       <li>Tocá <strong>Guardar en historial</strong>. Queda como v1.</li>
-      <li>Mandala con <strong>WhatsApp: PDF</strong> (o <strong>Descargar PDF</strong> en la compu).</li>
+      <li>Mandala con <strong>Enviar por WhatsApp</strong> (manda solo el PDF) o <strong>Descargar PDF</strong>.</li>
     </ol>
     <p class="ayuda">Lo que escribís se guarda solo en el dispositivo mientras tanto: si se cierra la página, no se pierde.</p>
   </section>
@@ -30,7 +30,13 @@
 
   <section class="tarjeta">
     <h2>3. Calculadora</h2>
-    <p>Escogé la calculadora, cambiá las medidas y tocá <strong>Agregar a la cotización</strong>: pregunta en cuál Parte y si el cliente lo ve, y agrega el renglón, los materiales y (mano de obra) el monto a la cotización abierta.</p>
+    <ul>
+      <li>Escogé la calculadora, cambiá las medidas y tocá <strong>Agregar a la cotización</strong>: pregunta en cuál Parte y si el cliente lo ve.</li>
+      <li><strong>Pedir de más o de menos:</strong> en el resultado, cada material tiene <strong>−</strong> y <strong>+</strong>. Se ve lo calculado y lo que pedís; se agrega lo que pedís.</li>
+      <li><strong>📐 Plano:</strong> copiá la instrucción, pegala en un chat de IA gratis con la foto del plano, y pegá aquí la respuesta: se llenan los espacios, puertas y ventanas. Después, "Pasar a Pisos" o "Pasar paredes a Áreas".</li>
+      <li><strong>Pisos:</strong> espacios por largo × ancho; marcá si lleva cerámica, rodapié o contrapiso.</li>
+      <li><strong>Paredes (Durock / gypsum):</strong> cara interna y externa por aparte, cada una con su lámina; medí por largo × alto o por m² directo.</li>
+    </ul>
   </section>
 
   <section class="tarjeta">

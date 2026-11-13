@@ -140,13 +140,14 @@ export async function compartir(blob: Blob, nombre: string): Promise<void> {
     return;
   }
   try {
-    await navigator.share({ files: [archivo], title: nombre });
+    // Solo el archivo: sin título, texto ni link (así WhatsApp manda únicamente el PDF).
+    await navigator.share({ files: [archivo] });
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') return; // la persona cerró el menú
     if (e instanceof DOMException && e.name === 'NotAllowedError') {
       // Tardó mucho en prepararse y el navegador pide tocar otra vez.
       if (await dialogos.confirmar('El archivo está listo', nombre, { si: 'Compartir' })) {
-        await navigator.share({ files: [archivo], title: nombre }).catch(() => {});
+        await navigator.share({ files: [archivo] }).catch(() => {});
       }
       return;
     }
