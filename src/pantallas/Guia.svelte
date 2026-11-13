@@ -33,7 +33,7 @@
     <ul>
       <li>Escogé la calculadora, cambiá las medidas y tocá <strong>Agregar a la cotización</strong>: pregunta en cuál Parte y si el cliente lo ve.</li>
       <li><strong>Pedir de más o de menos:</strong> en el resultado, cada material tiene <strong>−</strong> y <strong>+</strong>. Se ve lo calculado y lo que pedís; se agrega lo que pedís.</li>
-      <li><strong>📐 Plano:</strong> copiá la instrucción, pegala en un chat de IA gratis con la foto del plano, y pegá aquí la respuesta: se llenan los espacios, puertas y ventanas. Después, "Pasar a Pisos" o "Pasar paredes a Áreas".</li>
+      <li><strong>📐 Plano (para cualquier trabajo):</strong> copiá la instrucción, pegala en un chat de IA gratis y adjuntá el plano. Pegá aquí la respuesta: aparecen los espacios, paredes, puertas, ventanas, techos, losas y tubos que tenga el plano, cada uno con su botón para pasarlo a su calculadora.</li>
       <li><strong>Pisos:</strong> espacios por largo × ancho; marcá si lleva cerámica, rodapié o contrapiso.</li>
       <li><strong>Paredes (Durock / gypsum):</strong> cara interna y externa por aparte, cada una con su lámina; medí por largo × alto o por m² directo.</li>
     </ul>

@@ -59,20 +59,43 @@ export const NOMBRES = {
 
 // 1. Áreas -------------------------------------------------------------------
 
+/** Para qué es cada superficie de "Áreas". */
+export const TIPOS_AREA = ['Pared', 'Piso', 'Techo', 'Otro'] as const;
+export type TipoArea = (typeof TIPOS_AREA)[number];
+
 export interface Superficie {
   descripcion: string;
   largo: number;
   alto: number;
   cantidad: number;
+  /** Para qué es (si no se dice, cuenta como pared). */
+  tipo?: TipoArea;
 }
 
+/**
+ * Áreas por tipo. Las puertas y ventanas se restan solo de las paredes
+ * (si no hay paredes, del total).
+ */
 export function areas(superficies: Superficie[], aberturas: Superficie[]) {
-  const suma = (l: Superficie[]) => l.reduce((s, x) => s + pos(x.largo) * pos(x.alto) * pos(x.cantidad), 0);
-  const bruta = dos(suma(superficies));
-  const huecos = dos(suma(aberturas));
+  const m2 = (x: Superficie) => pos(x.largo) * pos(x.alto) * pos(x.cantidad);
+  const bruta = dos(superficies.reduce((s, x) => s + m2(x), 0));
+  const huecos = dos(aberturas.reduce((s, x) => s + m2(x), 0));
   const neta = dos(Math.max(0, bruta - huecos));
-  return { bruta, aberturas: huecos, neta, resultado: { renglon: `Área total: ${num(neta)} m².`, materiales: [] } as Resultado };
+  const porTipo = Object.fromEntries(TIPOS_AREA.map((t) => [t, 0])) as Record<TipoArea, number>;
+  for (const x of superficies) porTipo[x.tipo ?? 'Pared'] += m2(x);
+  if (porTipo.Pared > 0) porTipo.Pared = Math.max(0, porTipo.Pared - huecos);
+  for (const t of TIPOS_AREA) porTipo[t] = dos(porTipo[t]);
+  const partes = TIPOS_AREA.filter((t) => porTipo[t] > 0).map((t) => `${PLURAL_AREA[t].toLowerCase()} ${num(porTipo[t])} m²`);
+  return {
+    bruta,
+    aberturas: huecos,
+    neta,
+    porTipo,
+    resultado: { renglon: `Área total: ${num(neta)} m²${partes.length > 1 ? ` (${partes.join(', ')})` : ''}.`, materiales: [] } as Resultado,
+  };
 }
+
+export const PLURAL_AREA: Record<TipoArea, string> = { Pared: 'Paredes', Piso: 'Pisos', Techo: 'Techos y cielos', Otro: 'Otras áreas' };
 
 // 2. Pintura -----------------------------------------------------------------
 

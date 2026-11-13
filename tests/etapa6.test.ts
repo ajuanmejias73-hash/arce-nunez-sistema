@@ -120,8 +120,73 @@ describe('Plano: leer la respuesta del chat', () => {
     expect(c.cuartos[0]).toMatchObject({ area: 14, perimetro: 15, paredes: 37.5 });
   });
 
-  it('la instrucción para el chat trae el formato y un ejemplo', () => {
-    expect(INSTRUCCION_CHAT).toContain('CUARTO: <nombre> | <largo en metros> | <ancho en metros>');
-    expect(leerRespuesta(INSTRUCCION_CHAT.split('Ejemplo:')[1]).plano.cuartos).toHaveLength(2);
+  it('la instrucción general trae todos los tipos, y su ejemplo se lee completo', () => {
+    for (const t of ['ALTO:', 'ESPACIO:', 'PARED:', 'PUERTA:', 'VENTANA:', 'TECHO:', 'LOSA:', 'TUBO:', 'NOTA:']) expect(INSTRUCCION_CHAT).toContain(t);
+    const { plano, ignoradas } = leerRespuesta(INSTRUCCION_CHAT.split('Ejemplo:')[1]);
+    expect(ignoradas).toEqual([]);
+    expect([plano.cuartos, plano.paredes, plano.techos, plano.losas, plano.tubos, plano.notas].map((l) => l.length)).toEqual([1, 1, 1, 1, 1, 1]);
+    expect(plano.aberturas).toHaveLength(2);
+  });
+
+  it('un plano con de todo: techo, losa, portón con tubos, paredes y notas', () => {
+    const { plano, ignoradas } = leerRespuesta(
+      [
+        '**PAREDES:** Pared lateral | 6.00 | 2.80 | 1',
+        'PARED: Divisoria | 3.00 | 2.80',
+        'TECHO: Cochera | 4.00 | 6.00 | 15',
+        'TECHOS: Corredor | 2,5 | 8 (estimado)',
+        'LOSA: Contrapiso cochera | 6 | 4 | 8',
+        'LOSA: Acera | 6 | 1',
+        'TUBOS: Tubo 2x2 galvanizado | 2.00 | 6',
+        'TUBO: Tubo 1x1 | 1.20 | 14',
+        'PORTÓN: Portón principal | 3.00 | 2.00 | 1',
+        'NOTA: Lleva malla ciclón abajo.',
+      ].join('\n'),
+    );
+    expect(plano.paredes).toEqual([
+      { nombre: 'Pared lateral', largo: 6, alto: 2.8, caras: 1 },
+      { nombre: 'Divisoria', largo: 3, alto: 2.8, caras: 2 }, // sin caras: 2 por defecto
+    ]);
+    expect(plano.techos).toEqual([
+      { nombre: 'Cochera', largo: 4, ancho: 6, pendiente: 15 },
+      { nombre: 'Corredor', largo: 2.5, ancho: 8, pendiente: 15, estimado: true },
+    ]);
+    expect(plano.losas).toEqual([{ nombre: 'Contrapiso cochera', largo: 6, ancho: 4, espesorCm: 8 }]);
+    expect(plano.tubos).toEqual([
+      { material: 'Tubo 2x2 galvanizado', medida: 2, cortes: 6 },
+      { material: 'Tubo 1x1', medida: 1.2, cortes: 14 },
+    ]);
+    expect(plano.aberturas).toEqual([{ tipo: 'Puerta', nombre: 'Portón principal', ancho: 3, alto: 2, cantidad: 1 }]);
+    expect(plano.notas).toEqual(['Lleva malla ciclón abajo.']);
+    expect(ignoradas).toEqual(['LOSA: Acera | 6 | 1']); // a la losa le falta el espesor
+
+    const c = calcularPlano({ ...plano, altoParedes: 2.8 });
+    expect(c.paredesNuevasM2).toBe(33.6); // 6 × 2.8 + 3 × 2.8 × 2
+    expect(c.techos[0].area).toBe(24.27); // igual que la calculadora de techos
+    expect(c.losaM3).toBe(1.92); // 6 × 4 × 0.08
+    expect(c.tuboMetros).toBe(28.8); // 2 × 6 + 1.2 × 14
+    expect(c.hayEstimados).toBe(true);
+  });
+});
+
+describe('Áreas por tipo', async () => {
+  const { areas } = await import('../src/lib/calculadoras.ts');
+  it('separa paredes, pisos y techos; puertas y ventanas solo se restan de las paredes', () => {
+    const r = areas(
+      [
+        { descripcion: 'Paredes', largo: 15, alto: 2.5, cantidad: 1, tipo: 'Pared' },
+        { descripcion: 'Piso', largo: 3.5, alto: 4, cantidad: 1, tipo: 'Piso' },
+        { descripcion: 'Cielo', largo: 3.5, alto: 4, cantidad: 1, tipo: 'Techo' },
+      ],
+      [{ descripcion: 'Puerta', largo: 0.9, alto: 2.1, cantidad: 1 }],
+    );
+    expect(r.porTipo).toEqual({ Pared: 35.61, Piso: 14, Techo: 14, Otro: 0 });
+    expect(r.neta).toBe(37.5 + 28 - 1.89);
+    expect(r.resultado.renglon).toBe('Área total: 63.61 m² (paredes 35.61 m², pisos 14 m², techos y cielos 14 m²).');
+  });
+  it('sin tipo cuenta como pared (como antes)', () => {
+    const r = areas([{ descripcion: '', largo: 4, alto: 2.5, cantidad: 1 }], []);
+    expect(r.porTipo.Pared).toBe(10);
+    expect(r.resultado.renglon).toBe('Área total: 10 m².');
   });
 });
