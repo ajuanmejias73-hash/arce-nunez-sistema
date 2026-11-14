@@ -31,18 +31,7 @@
   </section>
 
   <section class="tarjeta">
-    <h2>3. Calculadora</h2>
-    <ul>
-      <li>Escogé la calculadora, cambiá las medidas y tocá <strong>Agregar a la cotización</strong>: pregunta en cuál Parte y si el cliente lo ve.</li>
-      <li><strong>Pedir de más o de menos:</strong> en el resultado, cada material tiene <strong>−</strong> y <strong>+</strong>. Se ve lo calculado y lo que pedís; se agrega lo que pedís.</li>
-      <li><strong>📐 Plano (para cualquier trabajo):</strong> copiá la instrucción, pegala en un chat de IA gratis y adjuntá el plano. Pegá aquí la respuesta: aparecen los espacios, paredes, puertas, ventanas, techos, losas y tubos que tenga el plano, cada uno con su botón para pasarlo a su calculadora.</li>
-      <li><strong>Pisos:</strong> espacios por largo × ancho; marcá si lleva cerámica, rodapié o contrapiso.</li>
-      <li><strong>Paredes (Durock / gypsum):</strong> cara interna y externa por aparte, cada una con su lámina; medí por largo × alto o por m² directo.</li>
-    </ul>
-  </section>
-
-  <section class="tarjeta">
-    <h2>4. Plata</h2>
+    <h2>3. Plata</h2>
     <ul>
       <li><strong>Pago de cliente</strong>: escogé la cotización; el sistema sugiere el adelanto o lo que falta, y pone solo la categoría y el estado (Aceptada o Pagada).</li>
       <li><strong>Gasto</strong>: materiales, combustible, etc. Si es de una obra, escogela para ver la ganancia por obra.</li>
@@ -52,7 +41,7 @@
   </section>
 
   <section class="tarjeta">
-    <h2>5. Cuidados</h2>
+    <h2>4. Cuidados</h2>
     <ul>
       <li>Todo lo que se guarda queda con el nombre de quien lo hizo (Pablo o Lin).</li>
       <li>Si los dos usan el sistema a la vez, la página se pone al día sola cada poco y avisa los cambios del otro.</li>

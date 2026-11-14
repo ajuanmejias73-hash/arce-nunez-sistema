@@ -16,7 +16,6 @@
   import Cotizacion from './pantallas/Cotizacion.svelte';
   import Historial from './pantallas/Historial.svelte';
   import VerCotizacion from './pantallas/VerCotizacion.svelte';
-  import Calculadora from './pantallas/Calculadora.svelte';
   import Contabilidad from './pantallas/Contabilidad.svelte';
   import Movimientos from './pantallas/Movimientos.svelte';
   import Planilla from './pantallas/Planilla.svelte';
@@ -54,8 +53,6 @@
       <Historial />
     {:else if rutas.actual.startsWith('ver/')}
       <VerCotizacion />
-    {:else if rutas.actual === 'calculadora'}
-      <Calculadora />
     {:else if rutas.actual === 'contabilidad'}
       <Contabilidad />
     {:else if rutas.actual === 'movimientos'}

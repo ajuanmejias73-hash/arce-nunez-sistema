@@ -174,7 +174,7 @@
 </script>
 
 <h1>Catálogos y listas</h1>
-<p class="ayuda">Lo que se agrega aquí aparece de inmediato en las listas del Panel, la Calculadora y la Contabilidad.</p>
+<p class="ayuda">Lo que se agrega aquí aparece de inmediato en las listas de las cotizaciones y la Contabilidad.</p>
 
 <div class="pestanas" role="tablist" aria-label="Catálogos">
   {#each PESTANAS as p}
