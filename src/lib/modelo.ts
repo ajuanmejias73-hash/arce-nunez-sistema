@@ -94,15 +94,26 @@ export function armarVista(d: DatosCotizacion, ajustes: Ajustes, catalogo: Mater
 
   const lineas: ParVista[] = [];
   const extrasVisibles = (d.extras ?? []).filter((x) => x.clienteVe && (x.monto ?? 0) > 0);
-  // Los extras que el cliente no ve van dentro de "Mano de obra" (o del trabajo) para que la suma cuadre.
-  if (desglose && porPartes) lineas.push({ etiqueta: 'Mano de obra', valor: colones(c.manoDeObra + c.extrasOcultos) });
-  if (desglose && porPartes && arceCompra) lineas.push({ etiqueta: 'Materiales', valor: colones(c.materiales) });
-  if (desglose && !porPartes && extrasVisibles.length) lineas.push({ etiqueta: 'Trabajo', valor: colones((d.totalAMano ?? 0) + c.extrasOcultos) });
-  if (desglose) for (const x of extrasVisibles) lineas.push({ etiqueta: x.concepto, valor: colones(x.monto ?? 0) });
-  // El descuento siempre se muestra (aunque el desglose esté escondido) para que el cliente lo vea.
+  // El descuento sale solo de la mano de obra (o del trabajo): va justo debajo de esa línea.
+  // Siempre se muestra, aunque el desglose esté escondido, para que el cliente lo vea.
   const conDescuento = c.descuento > 0;
-  if (desglose || conDescuento) lineas.push({ etiqueta: 'Subtotal', valor: colones(c.subtotal) });
-  if (conDescuento) lineas.push({ etiqueta: `Descuento (${porcentaje(c.descuentoPct)})`, valor: '−' + colones(c.descuento) });
+  const lineaDescuento = { etiqueta: `${porPartes ? 'Descuento en mano de obra' : 'Descuento'} (${porcentaje(c.descuentoPct)})`, valor: '−' + colones(c.descuento) };
+  // Los extras que el cliente no ve van dentro de "Mano de obra" (o del trabajo) para que la suma cuadre.
+  if (desglose && porPartes) {
+    lineas.push({ etiqueta: 'Mano de obra', valor: colones(c.manoDeObra + c.extrasOcultos) });
+    if (conDescuento) lineas.push(lineaDescuento);
+  }
+  if (desglose && porPartes && arceCompra) lineas.push({ etiqueta: 'Materiales', valor: colones(c.materiales) });
+  if (desglose && !porPartes && extrasVisibles.length) {
+    lineas.push({ etiqueta: 'Trabajo', valor: colones(c.baseDescuento) });
+    if (conDescuento) lineas.push(lineaDescuento);
+  }
+  if (desglose) for (const x of extrasVisibles) lineas.push({ etiqueta: x.concepto, valor: colones(x.monto ?? 0) });
+  if (conDescuento && !(desglose && (porPartes || extrasVisibles.length))) {
+    lineas.push({ etiqueta: 'Precio', valor: colones(c.subtotal) });
+    lineas.push(lineaDescuento);
+  }
+  if (desglose || conDescuento) lineas.push({ etiqueta: 'Subtotal', valor: colones(c.subtotal - c.descuento) });
   if ((desglose || conDescuento) && d.cobrarIVA) lineas.push({ etiqueta: `IVA ${porcentaje(ajustes.porDefecto.iva)}`, valor: colones(c.iva) });
 
   const adelantoSaldo: ParVista[] =

@@ -152,19 +152,19 @@
         <!-- 2. PRECIO -->
         <section class="tarjeta">
           <h2>2. Precio y condiciones</h2>
-          <div class="modo" role="radiogroup" aria-label="Modo de precio">
-            {#each ['Total a mano', 'Partes + materiales'] as const as m}
-              <label class:activo={d.modoPrecio === m}>
-                <input type="radio" bind:group={d.modoPrecio} value={m} />
-                <strong>{m}</strong>
-                <span>{m === 'Total a mano' ? 'Escribís el total vos' : 'Suma los montos de las Partes (y materiales si los compra Arce Nuñez)'}</span>
-              </label>
-            {/each}
-          </div>
+          {#if d.modoPrecio === 'Total a mano'}
+            <!-- Solo las cotizaciones viejas: las nuevas siempre son "Partes + materiales". -->
+            <div class="viejo">
+              <p>Esta cotización es de antes y tiene el total escrito a mano. Se puede seguir usando así, o pasarla a <strong>Partes + materiales</strong> (después poné el monto de cada Parte).</p>
+              <div class="campos">
+                <label>Total a mano (₡) <CampoNumero bind:valor={d.totalAMano} dinero etiqueta="Total a mano" /></label>
+                <button type="button" class="btn-borde" onclick={() => (d.modoPrecio = 'Partes + materiales')}>Pasar a Partes + materiales</button>
+              </div>
+            </div>
+          {:else}
+            <p class="ayuda">El total es la suma de los montos de las Partes (y de los materiales, si los compra Arce Nuñez).</p>
+          {/if}
           <div class="campos">
-            {#if d.modoPrecio === 'Total a mano'}
-              <label>Total a mano (₡) <CampoNumero bind:valor={d.totalAMano} dinero etiqueta="Total a mano" /></label>
-            {/if}
             <label>% de adelanto <CampoNumero bind:valor={d.porcentajeAdelanto} factor={100} etiqueta="Porcentaje de adelanto" /></label>
             <label>
               ¿Quién compra los materiales?
@@ -199,9 +199,10 @@
               {/if}
               <p class="desc-info">
                 {#if c.descuento > 0}
-                  <strong>{colones(c.descuento)} = {porcentaje(c.descuentoPct)}</strong> de {colones(c.subtotal)}{d.cobrarIVA ? ' (antes del IVA)' : ''}.
-                  {#if d.descuento.tipo === 'Monto' && (d.descuento.valor ?? 0) > c.subtotal}<br /><span class="aviso">Es más que el subtotal: se rebaja solo {colones(c.subtotal)}.</span>{/if}
-                  <br />El cliente lo ve en el PDF y el total ya viene rebajado.
+                  <strong>{colones(c.descuento)} = {porcentaje(c.descuentoPct)}</strong>
+                  {d.modoPrecio === 'Partes + materiales' ? 'de la mano de obra' : 'del total a mano'} ({colones(c.baseDescuento)}{c.extrasOcultos > 0 ? ', con los costos extras escondidos' : ''}).
+                  {#if d.descuento.tipo === 'Monto' && (d.descuento.valor ?? 0) > c.baseDescuento}<br /><span class="aviso">Es más que eso: se rebaja solo {colones(c.baseDescuento)}.</span>{/if}
+                  <br />{d.modoPrecio === 'Partes + materiales' ? 'Los materiales no se tocan. ' : ''}El cliente lo ve en el PDF y el total ya viene rebajado.
                 {:else}
                   Escribí {d.descuento.tipo === 'Monto' ? 'cuántos colones' : 'qué porcentaje'} se rebaja.
                 {/if}
@@ -271,11 +272,14 @@
         {#if c.extras > 0}
           <div class="linea"><span>Costos extras{c.extrasOcultos > 0 ? ' (' + (c.extrasOcultos === c.extras ? 'escondidos' : 'parte escondida') + ')' : ''}</span><span>{colones(c.extras)}</span></div>
         {/if}
-        {#if d.cobrarIVA || c.descuento > 0}
-          <div class="linea"><span>Subtotal</span><span>{colones(c.subtotal)}</span></div>
+        {#if d.modoPrecio === 'Total a mano' && c.descuento > 0}
+          <div class="linea"><span>Total a mano</span><span>{colones(d.totalAMano ?? 0)}</span></div>
         {/if}
         {#if c.descuento > 0}
-          <div class="linea descuento"><span>Descuento ({porcentaje(c.descuentoPct)})</span><span>−{colones(c.descuento)}</span></div>
+          <div class="linea descuento"><span>{d.modoPrecio === 'Partes + materiales' ? 'Descuento en mano de obra' : 'Descuento'} ({porcentaje(c.descuentoPct)})</span><span>−{colones(c.descuento)}</span></div>
+        {/if}
+        {#if d.cobrarIVA || c.descuento > 0}
+          <div class="linea"><span>Subtotal</span><span>{colones(c.subtotal - c.descuento)}</span></div>
         {/if}
         {#if d.cobrarIVA}
           <div class="linea"><span>IVA {porcentaje(tasaIva)}</span><span>{colones(c.iva)}</span></div>
@@ -403,44 +407,6 @@
     font-size: 0.95rem;
     margin: 18px 0 8px;
   }
-  .modo {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .modo label {
-    border: 2px solid var(--linea);
-    border-radius: 10px;
-    padding: 10px 12px;
-    cursor: pointer;
-    display: grid;
-    gap: 2px;
-    color: var(--texto);
-    font-weight: 400;
-  }
-  .modo label.activo {
-    border-color: var(--dorado);
-    background: #fbf6ec;
-  }
-  .modo label:focus-within {
-    outline: 2px solid var(--dorado);
-  }
-  .modo label {
-    position: relative;
-  }
-  .modo input {
-    position: absolute;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
-    min-height: 0;
-    margin: 0;
-  }
-  .modo span {
-    font-size: 0.82rem;
-    color: var(--suave);
-  }
   .nota {
     display: flex;
     gap: 8px;
@@ -471,6 +437,16 @@
   .tachado {
     text-decoration: line-through;
     color: var(--suave);
+  }
+  .viejo {
+    background: #fff1c9;
+    border: 1px solid #ecd58f;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  .viejo p {
+    margin: 0 0 8px;
   }
   .desc-tipos {
     display: flex;
@@ -546,9 +522,6 @@
     }
     .distribucion {
       padding-bottom: 70px;
-    }
-    .modo {
-      grid-template-columns: 1fr;
     }
   }
 </style>

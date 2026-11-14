@@ -10,7 +10,7 @@ const ajustes = normalizarAjustes(leer('ajustes.json'));
 const catalogo = normalizarMateriales(leer('catalogo_materiales.json'));
 
 function base(c: Partial<DatosCotizacion> = {}): DatosCotizacion {
-  return { ...datosNuevos(ajustes, 'COT-0200'), cliente: 'Prueba', modoPrecio: 'Total a mano', totalAMano: 339350, porcentajeAdelanto: 0.5, ...c };
+  return { ...datosNuevos(ajustes, 'COT-0200'), cliente: 'Prueba', modoPrecio: 'Total a mano' as const, totalAMano: 339350, porcentajeAdelanto: 0.5, ...c };
 }
 
 describe('Descuento', () => {
@@ -63,5 +63,51 @@ describe('Descuento', () => {
   it('se guarda y se vuelve a leer igual', () => {
     expect(normalizarDatos({ ...base(), descuento: { tipo: 'Porcentaje', valor: 0.15 } }).descuento).toEqual({ tipo: 'Porcentaje', valor: 0.15 });
     expect(normalizarDatos({ ...base(), descuento: undefined }).descuento).toBeNull();
+  });
+});
+
+describe('Descuento solo sobre la mano de obra (Partes + materiales)', () => {
+  const cat = [{ material: 'Cemento', unidad: 'saco', precio: 7000, categoria: '', notas: '' }];
+  const partes = (c: Partial<DatosCotizacion> = {}) =>
+    base({
+      modoPrecio: 'Partes + materiales',
+      quienCompraMateriales: 'Arce Nuñez',
+      partes: [{ nombre: 'Piso', monto: 270000, renglones: [{ texto: 'Chorrea', clienteVe: true }] }],
+      materiales: [{ material: 'Cemento', cantidad: 10, unidad: '', precioEspecial: null, clienteVe: true }],
+      extras: [{ concepto: 'Transporte', monto: 40000, categoria: 'Transporte / acarreo', clienteVe: false }],
+      ...c,
+    });
+
+  it('el porcentaje sale de la mano de obra (con los extras escondidos), no de los materiales', () => {
+    const c = calcular(partes({ descuento: { tipo: 'Porcentaje', valor: 0.1 } }), cat, 0.13);
+    expect(c.materiales).toBe(70000);
+    expect(c.baseDescuento).toBe(310000);
+    expect(c.descuento).toBe(31000);
+    expect(c.total).toBe(270000 + 40000 + 70000 - 31000);
+  });
+
+  it('por monto: dice qué % es de la mano de obra y no rebaja más que ella', () => {
+    const c = calcular(partes({ descuento: { tipo: 'Monto', valor: 31000 } }), cat, 0.13);
+    expect(c.descuentoPct).toBeCloseTo(0.1, 5);
+    const tope = calcular(partes({ descuento: { tipo: 'Monto', valor: 999999 } }), cat, 0.13);
+    expect(tope.descuento).toBe(310000);
+    expect(tope.total).toBe(70000);
+  });
+
+  it('en el PDF sale debajo de "Mano de obra" y los materiales van completos', () => {
+    const { vista } = armarVista(partes({ descuento: { tipo: 'Porcentaje', valor: 0.1 } }), ajustes, cat);
+    const t = JSON.stringify(vista);
+    const i = t.indexOf('"Mano de obra"');
+    const j = t.indexOf('Descuento en mano de obra (10%)');
+    const k = t.indexOf('"Materiales"');
+    expect(i).toBeGreaterThan(-1);
+    expect(j).toBeGreaterThan(i);
+    expect(k).toBeGreaterThan(j);
+    expect(t).toContain('₡70,000');
+    expect(t).toContain('−₡31,000');
+  });
+
+  it('las cotizaciones nuevas siempre son Partes + materiales', () => {
+    expect(datosNuevos({ ...ajustes, porDefecto: { ...ajustes.porDefecto, modoPrecio: 'Total a mano' } }, 'COT-0300').modoPrecio).toBe('Partes + materiales');
   });
 });

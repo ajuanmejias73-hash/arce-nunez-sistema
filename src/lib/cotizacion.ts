@@ -146,7 +146,7 @@ export function datosNuevos(ajustes: Ajustes, numero: string, cliente?: { client
     cliente: cliente?.cliente ?? '',
     telefono: cliente?.telefono ?? '',
     ubicacion: cliente?.ubicacion ?? '',
-    modoPrecio: d.modoPrecio,
+    modoPrecio: 'Partes + materiales',
     porcentajeAdelanto: d.porcentajeAdelanto,
     quienCompraMateriales: d.quienCompraMateriales,
     validezDias: d.validezDias,
@@ -194,9 +194,14 @@ export interface Calculo {
   extrasOcultos: number;
   materiales: number;
   subtotal: number;
+  /**
+   * Sobre qué se calcula el descuento: la mano de obra tal como la ve el cliente
+   * (Partes + costos extras escondidos), o el total a mano. Los materiales nunca.
+   */
+  baseDescuento: number;
   /** Lo que se rebaja (en colones), ya aplicado antes del IVA. */
   descuento: number;
-  /** Qué porcentaje del subtotal es el descuento (0.1 = 10%). */
+  /** Qué porcentaje de la base es el descuento (0.1 = 10%). */
   descuentoPct: number;
   iva: number;
   total: number;
@@ -212,11 +217,11 @@ export function cantidadNumero(c: FilaMaterial['cantidad']): number | null {
   return null;
 }
 
-/** Cuántos colones se rebajan: nunca más que el subtotal ni menos que cero. */
-export function montoDescuento(ds: DatosCotizacion['descuento'], subtotal: number): number {
-  if (!ds || !ds.valor || ds.valor <= 0 || subtotal <= 0) return 0;
-  const m = ds.tipo === 'Porcentaje' ? subtotal * Math.min(ds.valor, 1) : ds.valor;
-  return Math.min(Math.round(m), subtotal);
+/** Cuántos colones se rebajan: nunca más que la base (la mano de obra) ni menos que cero. */
+export function montoDescuento(ds: DatosCotizacion['descuento'], base: number): number {
+  if (!ds || !ds.valor || ds.valor <= 0 || base <= 0) return 0;
+  const m = ds.tipo === 'Porcentaje' ? base * Math.min(ds.valor, 1) : ds.valor;
+  return Math.min(Math.round(m), base);
 }
 
 export function calcular(d: DatosCotizacion, catalogo: Material[], tasaIva: number): Calculo {
@@ -240,13 +245,15 @@ export function calcular(d: DatosCotizacion, catalogo: Material[], tasaIva: numb
   const extrasOcultos = (d.extras ?? []).filter((x) => !x.clienteVe).reduce((s, x) => s + (x.monto ?? 0), 0);
   const base = d.modoPrecio === 'Total a mano' ? (d.totalAMano ?? 0) : manoDeObra + (d.quienCompraMateriales === 'Arce Nuñez' ? materiales : 0);
   const subtotal = base + extras;
-  const descuento = montoDescuento(d.descuento, subtotal);
-  const descuentoPct = subtotal > 0 ? descuento / subtotal : 0;
+  // El descuento sale solo de la mano de obra: los materiales van completos.
+  const baseDescuento = (d.modoPrecio === 'Total a mano' ? (d.totalAMano ?? 0) : manoDeObra) + extrasOcultos;
+  const descuento = montoDescuento(d.descuento, baseDescuento);
+  const descuentoPct = baseDescuento > 0 ? descuento / baseDescuento : 0;
   // El IVA se cobra sobre el precio ya rebajado.
   const iva = d.cobrarIVA ? Math.round((subtotal - descuento) * tasaIva) : 0;
   const total = subtotal - descuento + iva;
   const adelanto = Math.round(total * d.porcentajeAdelanto);
-  return { manoDeObra, extras, extrasOcultos, materiales, subtotal, descuento, descuentoPct, iva, total, adelanto, saldo: total - adelanto, validaHasta: sumarDias(d.fecha, d.validezDias), filas };
+  return { manoDeObra, extras, extrasOcultos, materiales, subtotal, baseDescuento, descuento, descuentoPct, iva, total, adelanto, saldo: total - adelanto, validaHasta: sumarDias(d.fecha, d.validezDias), filas };
 }
 
 // ---------------------------------------------------------------------------

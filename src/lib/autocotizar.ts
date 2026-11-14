@@ -71,7 +71,7 @@ ${actual}
 
 ═══════════════ CÓMO COTIZAMOS ═══════════════
 - La cotización se divide en PARTES (por ejemplo: "Demolición", "Estructura", "Acabados"). Cada Parte tiene un nombre corto y renglones: UNA cosa por renglón, frases cortas, en orden de trabajo (como "A. Corte y armado de la estructura.").
-- Modo de precio: "Partes + materiales" (cada Parte con su monto de mano de obra) o "Total a mano" (un solo total). Preferimos "Partes + materiales" cuando hay montos por Parte.
+- El precio es "Partes + materiales": cada Parte lleva su monto de mano de obra (siempre ponele monto a cada Parte).
 - Por defecto: adelanto ${porcentaje(d.porcentajeAdelanto)}, validez ${d.validezDias} días, garantía ${d.garantiaMeses} meses, horario ${d.horario}, los materiales los compra: ${d.quienCompraMateriales}, IVA ${porcentaje(d.iva)} solo si el cliente pide factura.
 - Personal: ${e.personal || '—'}.
 - Tipos de trabajo que usamos: ${x.ajustes.listas.tiposTrabajo.join(', ')}.
@@ -105,7 +105,6 @@ Cuando yo confirme el resumen, respondé con UN SOLO bloque \`\`\`json con exact
   "trabajoSolicitado": "Frase corta del trabajo",
   "detalleExtra": "",
   "modoPrecio": "Partes + materiales",
-  "totalAMano": null,
   "quienCompraMateriales": "${d.quienCompraMateriales}",
   "mostrarMateriales": true,
   "cobrarIVA": false,
@@ -129,7 +128,7 @@ Cuando yo confirme el resumen, respondé con UN SOLO bloque \`\`\`json con exact
 
 Reglas del código:
 - Montos en colones, números enteros, sin símbolos ni comas (150000, no "₡150,000").
-- "porcentajeAdelanto" en porcentaje (50 = 50%). "monto" de cada Parte: mano de obra de esa Parte (null si es "Total a mano").
+- "porcentajeAdelanto" en porcentaje (50 = 50%). "monto" de cada Parte: mano de obra de esa Parte.
 - "renglonesOcultos": renglones que cuentan pero el cliente no ve (normalmente vacío).
 - Materiales: usá el nombre EXACTO del catálogo cuando exista; "cantidad" es número (o texto como "pendiente"); "precio" el de la lista (o el que yo te dije).
 - Si después te pido cambios, devolvé el código COMPLETO otra vez.`;
@@ -230,8 +229,8 @@ export function leerCodigo(
     tipoTrabajo: t('tipoTrabajo', base.tipoTrabajo),
     trabajoSolicitado: t('trabajoSolicitado', base.trabajoSolicitado),
     detalleExtra: t('detalleExtra', base.detalleExtra),
-    modoPrecio: o.modoPrecio === 'Total a mano' || o.modoPrecio === 'Partes + materiales' ? o.modoPrecio : base.modoPrecio,
-    totalAMano: numero(o.totalAMano) ?? base.totalAMano,
+    modoPrecio: 'Partes + materiales',
+    totalAMano: null,
     quienCompraMateriales: o.quienCompraMateriales === 'Arce Nuñez' || o.quienCompraMateriales === 'El cliente' ? o.quienCompraMateriales : base.quienCompraMateriales,
     mostrarMateriales: typeof o.mostrarMateriales === 'boolean' ? o.mostrarMateriales : base.mostrarMateriales,
     cobrarIVA: typeof o.cobrarIVA === 'boolean' ? o.cobrarIVA : base.cobrarIVA,
@@ -249,7 +248,6 @@ export function leerCodigo(
   if (!datos.cliente.trim()) avisos.push('Falta el nombre del cliente.');
   const sinMonto = datos.partes.filter((p) => p.nombre.trim() && p.monto === null).length;
   if (datos.modoPrecio === 'Partes + materiales' && sinMonto) avisos.push(`${sinMonto} ${sinMonto === 1 ? 'Parte no tiene' : 'Partes no tienen'} monto.`);
-  if (datos.modoPrecio === 'Total a mano' && !datos.totalAMano) avisos.push('Está en "Total a mano" pero no trae el total.');
   if (fuera) avisos.push(`${fuera} ${fuera === 1 ? 'material no está' : 'materiales no están'} en el catálogo (se pueden agregar desde la cotización).`);
   return { datos, avisos };
 }

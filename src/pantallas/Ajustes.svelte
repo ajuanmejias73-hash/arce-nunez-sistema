@@ -221,13 +221,6 @@
     <span class="ayuda">Se usan al hacer una cotización nueva.</span>
   </div>
   <div class="campos">
-    <label>
-      Modo de precio
-      <select bind:value={def.modoPrecio}>
-        <option>Total a mano</option>
-        <option>Partes + materiales</option>
-      </select>
-    </label>
     <label>% de adelanto <input bind:value={def.adelantoPct} inputmode="decimal" /></label>
     <label>% de IVA <input bind:value={def.ivaPct} inputmode="decimal" /></label>
     <label>Validez (días) <input bind:value={def.validez} inputmode="numeric" /></label>

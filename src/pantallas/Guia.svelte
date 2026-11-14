@@ -10,7 +10,7 @@
     <h2>1. Hacer una cotización</h2>
     <ol>
       <li>Tocá <button class="enlace" onclick={() => rutas.ir('nueva')}>+ Nueva cotización</button> y escogé cliente nuevo o uno que ya existe.</li>
-      <li>Llená los datos del cliente y escogé el <strong>modo de precio</strong>: "Total a mano" (escribís el total) o "Partes + materiales" (suma los montos de las Partes).</li>
+      <li>Llená los datos del cliente y en <strong>Precio y condiciones</strong> el total sale solo: es la suma de los montos de las Partes (y de los materiales si los compra Arce Nuñez). Ahí también podés poner un <strong>descuento</strong>, que se rebaja solo de la mano de obra.</li>
       <li>Escribí las <strong>Partes del trabajo</strong>: una cosa por renglón (Enter crea el siguiente). Con "Lo ve / Oculto" decidís qué ve el cliente; lo oculto igual cuenta en el total.</li>
       <li>Tocá <strong>Ver cotización</strong> para verla como la ve el cliente.</li>
       <li>Tocá <strong>Guardar en historial</strong>. Queda como v1.</li>

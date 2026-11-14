@@ -23,7 +23,7 @@ const catalogo = normalizarMateriales(leer('catalogo_materiales.json'));
 const cotizaciones = normalizarCotizaciones(leer('cotizaciones.json'));
 
 function base(cambios: Partial<DatosCotizacion> = {}): DatosCotizacion {
-  return { ...datosNuevos(ajustes, 'COT-0100'), cliente: 'Prueba', fecha: '2026-11-11', ...cambios };
+  return { ...datosNuevos(ajustes, 'COT-0100'), cliente: 'Prueba', fecha: '2026-11-11', modoPrecio: 'Total a mano' as const, ...cambios };
 }
 
 describe('las 7 cotizaciones viejas', () => {
