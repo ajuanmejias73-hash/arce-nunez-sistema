@@ -83,6 +83,7 @@ export function areas(superficies: Superficie[], aberturas: Superficie[]) {
   const neta = dos(Math.max(0, bruta - huecos));
   const porTipo = Object.fromEntries(TIPOS_AREA.map((t) => [t, 0])) as Record<TipoArea, number>;
   for (const x of superficies) porTipo[x.tipo ?? 'Pared'] += m2(x);
+  const paredBruta = dos(porTipo.Pared);
   if (porTipo.Pared > 0) porTipo.Pared = Math.max(0, porTipo.Pared - huecos);
   for (const t of TIPOS_AREA) porTipo[t] = dos(porTipo[t]);
   const partes = TIPOS_AREA.filter((t) => porTipo[t] > 0).map((t) => `${PLURAL_AREA[t].toLowerCase()} ${num(porTipo[t])} m²`);
@@ -91,6 +92,8 @@ export function areas(superficies: Superficie[], aberturas: Superficie[]) {
     aberturas: huecos,
     neta,
     porTipo,
+    /** Paredes antes de restar puertas y ventanas. */
+    paredBruta,
     resultado: { renglon: `Área total: ${num(neta)} m²${partes.length > 1 ? ` (${partes.join(', ')})` : ''}.`, materiales: [] } as Resultado,
   };
 }

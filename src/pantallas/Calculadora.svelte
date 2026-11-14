@@ -446,11 +446,22 @@
         </div>
         <button class="btn-borde btn-chico" onclick={() => estado.areas.aberturas.push({ descripcion: '', largo: '', alto: '', cantidad: '1' })}>+ Abertura</button>
         <div class="totales">
-          {#each C.TIPOS_AREA.filter((t) => area.porTipo[t] > 0) as t}
-            <span>{C.PLURAL_AREA[t]}: <strong>{C.num(area.porTipo[t])} m²</strong></span>
+          {#if area.paredBruta > 0}
+            <span class="linea-total">
+              Paredes: {C.num(area.paredBruta)} m²
+              {#if area.aberturas > 0}− puertas y ventanas {C.num(area.aberturas)} m²{/if}
+              = <strong>{C.num(area.porTipo.Pared)} m² netos</strong>
+            </span>
+          {/if}
+          {#each C.TIPOS_AREA.filter((t) => t !== 'Pared' && area.porTipo[t] > 0) as t}
+            <span class="linea-total">{C.PLURAL_AREA[t]}: <strong>{C.num(area.porTipo[t])} m²</strong></span>
           {/each}
-          {#if area.aberturas > 0}<span>Puertas y ventanas: <strong>−{C.num(area.aberturas)} m²</strong></span>{/if}
-          <span>Total neto: <strong>{C.num(area.neta)} m²</strong></span>
+          {#if area.paredBruta === 0 && area.aberturas > 0}
+            <span class="linea-total">Puertas y ventanas: <strong>−{C.num(area.aberturas)} m²</strong> (no hay paredes: se restan del total)</span>
+          {/if}
+          {#if C.TIPOS_AREA.filter((t) => area.porTipo[t] > 0).length > 1}
+            <span class="linea-total">Total de todo: <strong>{C.num(area.neta)} m²</strong></span>
+          {/if}
         </div>
         <p class="ayuda">En Pintura, Paredes, Cerámica y Mano de obra salen botones para usar cada una de estas áreas con un toque.</p>
       {:else if pestana === 'pisos'}
@@ -845,6 +856,9 @@
   .envoltura-resultados {
     overflow-x: auto;
     max-width: 100%;
+  }
+  .linea-total {
+    flex-basis: 100%;
   }
   .usar-area {
     display: flex;

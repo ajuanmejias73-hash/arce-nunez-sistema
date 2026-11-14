@@ -181,6 +181,7 @@ describe('Áreas por tipo', async () => {
       [{ descripcion: 'Puerta', largo: 0.9, alto: 2.1, cantidad: 1 }],
     );
     expect(r.porTipo).toEqual({ Pared: 35.61, Piso: 14, Techo: 14, Otro: 0 });
+    expect(r.paredBruta).toBe(37.5); // antes de restar la puerta
     expect(r.neta).toBe(37.5 + 28 - 1.89);
     expect(r.resultado.renglon).toBe('Área total: 63.61 m² (paredes 35.61 m², pisos 14 m², techos y cielos 14 m²).');
   });
