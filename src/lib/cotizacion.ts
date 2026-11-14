@@ -84,6 +84,10 @@ export function normalizarDatos(d: any): DatosCotizacion {
     extras: (Array.isArray(d.extras) ? d.extras : [])
       .filter((x: { concepto?: unknown }) => texto(x?.concepto).trim())
       .map((x: Record<string, unknown>) => ({ concepto: texto(x.concepto).trim(), monto: numONulo(x.monto), categoria: texto(x.categoria), clienteVe: x.clienteVe === true })),
+    descuento:
+      d.descuento && typeof d.descuento === 'object'
+        ? { tipo: d.descuento.tipo === 'Porcentaje' ? 'Porcentaje' : 'Monto', valor: numONulo(d.descuento.valor) }
+        : null,
   };
 }
 
@@ -190,6 +194,10 @@ export interface Calculo {
   extrasOcultos: number;
   materiales: number;
   subtotal: number;
+  /** Lo que se rebaja (en colones), ya aplicado antes del IVA. */
+  descuento: number;
+  /** Qué porcentaje del subtotal es el descuento (0.1 = 10%). */
+  descuentoPct: number;
   iva: number;
   total: number;
   adelanto: number;
@@ -202,6 +210,13 @@ export function cantidadNumero(c: FilaMaterial['cantidad']): number | null {
   if (typeof c === 'number') return Number.isFinite(c) ? c : null;
   if (typeof c === 'string' && /^\s*\d+([.,]\d+)?\s*$/.test(c)) return Number(c.replace(',', '.'));
   return null;
+}
+
+/** Cuántos colones se rebajan: nunca más que el subtotal ni menos que cero. */
+export function montoDescuento(ds: DatosCotizacion['descuento'], subtotal: number): number {
+  if (!ds || !ds.valor || ds.valor <= 0 || subtotal <= 0) return 0;
+  const m = ds.tipo === 'Porcentaje' ? subtotal * Math.min(ds.valor, 1) : ds.valor;
+  return Math.min(Math.round(m), subtotal);
 }
 
 export function calcular(d: DatosCotizacion, catalogo: Material[], tasaIva: number): Calculo {
@@ -225,10 +240,13 @@ export function calcular(d: DatosCotizacion, catalogo: Material[], tasaIva: numb
   const extrasOcultos = (d.extras ?? []).filter((x) => !x.clienteVe).reduce((s, x) => s + (x.monto ?? 0), 0);
   const base = d.modoPrecio === 'Total a mano' ? (d.totalAMano ?? 0) : manoDeObra + (d.quienCompraMateriales === 'Arce Nuñez' ? materiales : 0);
   const subtotal = base + extras;
-  const iva = d.cobrarIVA ? Math.round(subtotal * tasaIva) : 0;
-  const total = subtotal + iva;
+  const descuento = montoDescuento(d.descuento, subtotal);
+  const descuentoPct = subtotal > 0 ? descuento / subtotal : 0;
+  // El IVA se cobra sobre el precio ya rebajado.
+  const iva = d.cobrarIVA ? Math.round((subtotal - descuento) * tasaIva) : 0;
+  const total = subtotal - descuento + iva;
   const adelanto = Math.round(total * d.porcentajeAdelanto);
-  return { manoDeObra, extras, extrasOcultos, materiales, subtotal, iva, total, adelanto, saldo: total - adelanto, validaHasta: sumarDias(d.fecha, d.validezDias), filas };
+  return { manoDeObra, extras, extrasOcultos, materiales, subtotal, descuento, descuentoPct, iva, total, adelanto, saldo: total - adelanto, validaHasta: sumarDias(d.fecha, d.validezDias), filas };
 }
 
 // ---------------------------------------------------------------------------

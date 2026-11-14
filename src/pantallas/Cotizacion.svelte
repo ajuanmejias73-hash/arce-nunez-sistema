@@ -29,6 +29,17 @@
   const tiposTrabajo = $derived(datos.c?.ajustes.listas.tiposTrabajo ?? []);
   const tasaIva = $derived(datos.c?.ajustes.porDefecto.iva ?? 0.13);
 
+  /** Cambiar el tipo de descuento; si ya había uno, se pasa al otro tipo sin cambiar cuánto se rebaja. */
+  function tipoDescuento(t: string) {
+    const d = editor.d;
+    if (!d) return;
+    if (t !== 'Monto' && t !== 'Porcentaje') return void (d.descuento = null);
+    if (d.descuento?.tipo === t) return;
+    const c = resultado?.calculo;
+    const valor = c && c.descuento > 0 ? (t === 'Monto' ? c.descuento : Math.round(c.descuentoPct * 1000) / 1000) : null;
+    d.descuento = { tipo: t, valor };
+  }
+
   async function faltaCliente(): Promise<boolean> {
     if (editor.d?.cliente.trim()) return false;
     dialogos.avisar('Falta el nombre del cliente.', 'error');
@@ -173,6 +184,31 @@
             </label>
           </div>
 
+          <h3 class="sub">Descuento</h3>
+          <div class="desc-tipos" role="group" aria-label="Descuento">
+            {#each [['', 'Sin descuento'], ['Monto', 'Por monto (₡)'], ['Porcentaje', 'Por porcentaje (%)']] as [t, nombre]}
+              <button type="button" class="btn-borde btn-chico" class:activo={(d.descuento?.tipo ?? '') === t} aria-pressed={(d.descuento?.tipo ?? '') === t} onclick={() => tipoDescuento(t)}>{nombre}</button>
+            {/each}
+          </div>
+          {#if d.descuento}
+            <div class="campos">
+              {#if d.descuento.tipo === 'Monto'}
+                <label>Monto del descuento (₡) <CampoNumero bind:valor={d.descuento.valor} dinero etiqueta="Monto del descuento" /></label>
+              {:else}
+                <label>Porcentaje de descuento (%) <CampoNumero bind:valor={d.descuento.valor} factor={100} etiqueta="Porcentaje de descuento" /></label>
+              {/if}
+              <p class="desc-info">
+                {#if c.descuento > 0}
+                  <strong>{colones(c.descuento)} = {porcentaje(c.descuentoPct)}</strong> de {colones(c.subtotal)}{d.cobrarIVA ? ' (antes del IVA)' : ''}.
+                  {#if d.descuento.tipo === 'Monto' && (d.descuento.valor ?? 0) > c.subtotal}<br /><span class="aviso">Es más que el subtotal: se rebaja solo {colones(c.subtotal)}.</span>{/if}
+                  <br />El cliente lo ve en el PDF y el total ya viene rebajado.
+                {:else}
+                  Escribí {d.descuento.tipo === 'Monto' ? 'cuántos colones' : 'qué porcentaje'} se rebaja.
+                {/if}
+              </p>
+            </div>
+          {/if}
+
           <h3 class="sub">Lo que ve el cliente</h3>
           <div class="campos">
             <Interruptor bind:valor={d.clienteVe.montoPartes} etiqueta="Monto de cada Parte" ayuda={d.modoPrecio === 'Total a mano' ? 'Solo en modo Partes + materiales' : ''} />
@@ -235,8 +271,13 @@
         {#if c.extras > 0}
           <div class="linea"><span>Costos extras{c.extrasOcultos > 0 ? ' (' + (c.extrasOcultos === c.extras ? 'escondidos' : 'parte escondida') + ')' : ''}</span><span>{colones(c.extras)}</span></div>
         {/if}
-        {#if d.cobrarIVA}
+        {#if d.cobrarIVA || c.descuento > 0}
           <div class="linea"><span>Subtotal</span><span>{colones(c.subtotal)}</span></div>
+        {/if}
+        {#if c.descuento > 0}
+          <div class="linea descuento"><span>Descuento ({porcentaje(c.descuentoPct)})</span><span>−{colones(c.descuento)}</span></div>
+        {/if}
+        {#if d.cobrarIVA}
           <div class="linea"><span>IVA {porcentaje(tasaIva)}</span><span>{colones(c.iva)}</span></div>
         {/if}
         <div class="linea total"><span>TOTAL</span><span>{colones(c.total)}</span></div>
@@ -430,6 +471,31 @@
   .tachado {
     text-decoration: line-through;
     color: var(--suave);
+  }
+  .desc-tipos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .desc-tipos .activo {
+    background: var(--carbon);
+    color: #fff;
+    border-color: var(--carbon);
+  }
+  .desc-info {
+    align-self: end;
+    margin: 0;
+    background: #f5f0e6;
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .desc-info .aviso {
+    color: var(--rojo);
+  }
+  .linea.descuento {
+    color: #22603a;
+    font-weight: 700;
   }
   .ancho-completo {
     width: 100%;

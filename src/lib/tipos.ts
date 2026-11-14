@@ -169,6 +169,14 @@ export interface DatosCotizacion {
   fotos: string[];
   /** Costos extras (transporte, pólizas…): se cobran; por defecto el cliente no los ve. */
   extras: CostoExtra[];
+  /** Descuento sobre el subtotal (antes del IVA). null = sin descuento. */
+  descuento: Descuento | null;
+}
+
+export interface Descuento {
+  tipo: 'Monto' | 'Porcentaje';
+  /** Colones si es "Monto"; fracción (0.1 = 10%) si es "Porcentaje". */
+  valor: number | null;
 }
 
 export interface CostoExtra {
