@@ -94,7 +94,7 @@
             <td data-etiqueta="Fecha">{fecha(m.fecha)}</td>
             <td data-etiqueta="Tipo"><span class="tipo" class:gasto={m.tipo === 'Gasto'}>{m.tipo}</span></td>
             <td data-etiqueta="Categoría">{m.categoria}</td>
-            <td data-etiqueta="Descripción">{m.descripcion}{#if m.notas}<small class="nota">{m.notas}</small>{/if}</td>
+            <td data-etiqueta="Descripción">{#if m.estimado}<span class="estimado" title="Salió de la cotización al aceptarse: editalo con el monto real">Estimado</span> {/if}{m.descripcion}{#if m.notas}<small class="nota">{m.notas}</small>{/if}</td>
             <td data-etiqueta="Obra">{#if m.cotizacion}<button class="enlace" onclick={() => rutas.ir('ver/' + m.cotizacion)}>{m.cotizacion}</button>{/if}</td>
             <td data-etiqueta="Persona">{m.persona}</td>
             <td data-etiqueta="Método">{m.metodo}</td>
@@ -167,6 +167,14 @@
   .tipo.gasto {
     background: #fbefed;
     color: var(--rojo);
+  }
+  .estimado {
+    background: #fff1c9;
+    color: #6b4d00;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
   }
   .nota {
     display: block;

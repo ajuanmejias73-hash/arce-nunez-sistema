@@ -14,6 +14,10 @@
   import EditorMateriales from '../componentes/EditorMateriales.svelte';
   import EditorFotos from '../componentes/EditorFotos.svelte';
   import VistaEscalada from '../componentes/VistaEscalada.svelte';
+  import EditorExtras from '../componentes/EditorExtras.svelte';
+  import DialogoAutomatico from '../componentes/DialogoAutomatico.svelte';
+
+  let automatica = $state(false);
 
   const MAX_NOTAS = 6;
 
@@ -103,6 +107,7 @@
         {/if}
       </p>
     </div>
+    <button class="btn automatica" onclick={() => (automatica = true)} title="Que Claude te haga preguntas y llene la cotización">🤖 Cotización automática</button>
     <div class="pestanas" role="tablist">
       <button role="tab" aria-selected={pestana === 'escribir'} class:activa={pestana === 'escribir'} onclick={() => (pestana = 'escribir')}>Escribir</button>
       <button role="tab" aria-selected={pestana === 'vista'} class:activa={pestana === 'vista'} onclick={() => (pestana = 'vista')}>Ver cotización</button>
@@ -189,9 +194,15 @@
           <EditorMateriales {d} calculo={c} />
         </section>
 
-        <!-- 5. NOTAS -->
+        <!-- 5. COSTOS EXTRAS -->
         <section class="tarjeta">
-          <h2>5. Notas</h2>
+          <h2>5. Costos extras</h2>
+          <EditorExtras {d} />
+        </section>
+
+        <!-- 6. NOTAS -->
+        <section class="tarjeta">
+          <h2>6. Notas</h2>
           {#each d.notas as _, i}
             <div class="nota">
               <textarea bind:value={d.notas[i]} rows="2" aria-label="Nota {i + 1}"></textarea>
@@ -203,9 +214,9 @@
           {/if}
         </section>
 
-        <!-- 6. FOTOS -->
+        <!-- 7. FOTOS -->
         <section class="tarjeta">
-          <h2>6. Fotos de referencia</h2>
+          <h2>7. Fotos de referencia</h2>
           <EditorFotos {d} />
         </section>
       {/if}
@@ -220,6 +231,9 @@
             <span>Materiales {d.quienCompraMateriales === 'El cliente' ? '(los compra el cliente)' : ''}</span>
             <span class:tachado={d.quienCompraMateriales === 'El cliente'}>{colones(c.materiales)}</span>
           </div>
+        {/if}
+        {#if c.extras > 0}
+          <div class="linea"><span>Costos extras{c.extrasOcultos > 0 ? ' (' + (c.extrasOcultos === c.extras ? 'escondidos' : 'parte escondida') + ')' : ''}</span><span>{colones(c.extras)}</span></div>
         {/if}
         {#if d.cobrarIVA}
           <div class="linea"><span>Subtotal</span><span>{colones(c.subtotal)}</span></div>
@@ -247,6 +261,8 @@
       </section>
     </aside>
   </div>
+
+  <DialogoAutomatico bind:abierta={automatica} />
 
   <!-- Barra fija abajo en el celular -->
   <div class="barra-celular">
@@ -291,6 +307,16 @@
     font-weight: 700;
     font-size: 0.78rem;
     margin-left: 6px;
+  }
+  .automatica {
+    background: var(--carbon-2);
+    color: var(--dorado-claro);
+    border-radius: 999px;
+    padding: 8px 16px;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 20%);
+  }
+  .automatica:hover {
+    background: #000;
   }
   .pestanas {
     display: flex;

@@ -93,8 +93,12 @@ export function armarVista(d: DatosCotizacion, ajustes: Ajustes, catalogo: Mater
   ].filter(Boolean);
 
   const lineas: ParVista[] = [];
-  if (desglose && porPartes) lineas.push({ etiqueta: 'Mano de obra', valor: colones(c.manoDeObra) });
+  const extrasVisibles = (d.extras ?? []).filter((x) => x.clienteVe && (x.monto ?? 0) > 0);
+  // Los extras que el cliente no ve van dentro de "Mano de obra" (o del trabajo) para que la suma cuadre.
+  if (desglose && porPartes) lineas.push({ etiqueta: 'Mano de obra', valor: colones(c.manoDeObra + c.extrasOcultos) });
   if (desglose && porPartes && arceCompra) lineas.push({ etiqueta: 'Materiales', valor: colones(c.materiales) });
+  if (desglose && !porPartes && extrasVisibles.length) lineas.push({ etiqueta: 'Trabajo', valor: colones((d.totalAMano ?? 0) + c.extrasOcultos) });
+  if (desglose) for (const x of extrasVisibles) lineas.push({ etiqueta: x.concepto, valor: colones(x.monto ?? 0) });
   if (desglose) lineas.push({ etiqueta: 'Subtotal', valor: colones(c.subtotal) });
   if (desglose && d.cobrarIVA) lineas.push({ etiqueta: `IVA ${porcentaje(ajustes.porDefecto.iva)}`, valor: colones(c.iva) });
 

@@ -1,5 +1,6 @@
 /** Guardar pagos, gastos, horas y pagos de planilla (cada uno firmado por quien lo hizo). */
-import { CATEGORIA_PLANILLA, categoriaPago, estadoTrasPago, horasPorObra, infoPago } from './contabilidad.ts';
+import { CATEGORIA_PLANILLA, categoriaPago, estadoTrasPago, gastosEstimados, horasPorObra, infoPago } from './contabilidad.ts';
+import { ESTADOS_ACEPTADOS } from './cotizacion.ts';
 import { datos } from './datos.svelte.ts';
 import { colones } from './formato.ts';
 import { nuevoId } from './normalizar.ts';
@@ -45,7 +46,8 @@ export async function registrarPago(numero: string, monto: number, metodo: strin
       sesion.quien,
     );
   }
-  return `${categoria}: ${colones(monto)}. ${quedan > 0 ? `Le falta ${colones(quedan)}.` : 'Quedó todo pagado.'}${nuevo !== c.estado ? ` La cotización pasó a «${nuevo}».` : ''}`;
+  const estimados = ESTADOS_ACEPTADOS.includes(nuevo) ? await registrarGastosAlAceptar(numero) : 0;
+  return `${categoria}: ${colones(monto)}. ${quedan > 0 ? `Le falta ${colones(quedan)}.` : 'Quedó todo pagado.'}${nuevo !== c.estado ? ` La cotización pasó a «${nuevo}».` : ''}${estimados ? ` Se registraron ${estimados} gastos estimados de la obra.` : ''}`;
 }
 
 /** Nuevo movimiento (id = null) o cambios a uno existente. */
@@ -57,7 +59,8 @@ export async function guardarMovimiento(id: string | null, d: DatosMovimiento): 
       else {
         const i = l.findIndex((m) => m.id === id);
         if (i < 0) throw new Error('ese movimiento ya no existe (¿lo borró la otra persona?).');
-        l[i] = { ...l[i], ...d, id, ...firma() };
+        const { estimado: _estimado, ...anterior } = l[i];
+        l[i] = { ...anterior, ...d, id, ...firma() };
       }
     },
     `${id === null ? 'registró' : 'editó'} ${d.tipo === 'Gasto' ? 'un gasto' : 'un ingreso'} de ${colones(d.monto)} (${d.categoria})`,
@@ -158,4 +161,37 @@ export async function pagarPlanilla(trabajador: string, metodo: string, fecha: s
     throw new Error(`las horas quedaron marcadas como pagadas, pero el gasto no se pudo registrar. Registralo a mano en "Pagos y gastos". (${e instanceof Error ? e.message : e})`);
   }
   return { gastos: grupos.length, total: grupos.reduce((s, g) => s + g.monto, 0) };
+}
+
+/**
+ * Cuando una cotización pasa a "Aceptada" (o En proceso, Terminada, Pagada) por primera vez,
+ * registra sus gastos estimados: materiales (si los compra Arce Nuñez) y costos extras.
+ * Devuelve cuántos registró (0 si ya se habían registrado antes).
+ */
+export async function registrarGastosAlAceptar(numero: string): Promise<number> {
+  const c = datos.c?.cotizaciones.find((x) => x.numero === numero);
+  if (!c || c.gastosRegistrados) return 0;
+  const lista = gastosEstimados(c, datos.c!.materiales, datos.c!.ajustes.porDefecto.iva, datos.c!.ajustes.listas.categoriasGasto);
+  if (lista.length) {
+    await datos.modificar(
+      'movimientos',
+      (l) => {
+        // Por si la otra persona ya los registró al mismo tiempo.
+        if (l.some((m) => m.cotizacion === numero && m.estimado)) return;
+        for (const g of lista) l.push({ ...g, id: nuevoId(), ...firma() });
+      },
+      `registró ${lista.length} gastos estimados de ${numero} (cotización aceptada)`,
+      sesion.quien,
+    );
+  }
+  await datos.modificar(
+    'cotizaciones',
+    (l) => {
+      const x = l.find((y) => y.numero === numero);
+      if (x) x.gastosRegistrados = new Date().toISOString();
+    },
+    `marcó los gastos estimados de ${numero} como registrados`,
+    sesion.quien,
+  );
+  return lista.length;
 }

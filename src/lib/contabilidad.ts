@@ -2,8 +2,9 @@
  * Reglas de la contabilidad (sección 10 de la especificación): pagos de clientes,
  * planilla y resúmenes. Solo cuentas, sin pantallas: así se prueban solas.
  */
-import { ESTADOS_ACEPTADOS, ultimaVersion } from './cotizacion.ts';
-import type { Cotizacion, Hora, Movimiento } from './tipos.ts';
+import { ESTADOS_ACEPTADOS, calcular, ultimaVersion } from './cotizacion.ts';
+import { hoyISO } from './formato.ts';
+import type { Cotizacion, Hora, Material, Movimiento } from './tipos.ts';
 
 export const CATEGORIA_PLANILLA = 'Planilla (pago a trabajadores)';
 
@@ -122,13 +123,18 @@ export function gastosPorCategoria(anio: number, mes: number, movimientos: Movim
 }
 
 /** Por obra: cotizado, cobrado, lo que debe, gastos, ganancia y planilla sin pagar. */
-export function porObra(cotizaciones: Cotizacion[], movimientos: Movimiento[], horas: Hora[]) {
+export function porObra(cotizaciones: Cotizacion[], movimientos: Movimiento[], horas: Hora[], catalogo: Material[] = [], tasaIva = 0.13) {
   return cotizaciones
     .map((c) => {
       const total = ultimaVersion(c).total;
       const cob = cobrado(c.numero, movimientos);
       const gastos = gastosDeObra(c.numero, movimientos);
+      const p = presupuesto(c, catalogo, tasaIva);
       return {
+        presupuestoGastos: p.materiales + p.extras,
+        manoDeObraCotizada: p.manoDeObra,
+        planillaTotal: horas.filter((h) => h.cotizacion === c.numero).reduce((s, h) => s + totalHora(h), 0),
+        estimados: movimientos.filter((m) => m.cotizacion === c.numero && m.estimado).length,
         numero: c.numero,
         cliente: c.cliente,
         estado: c.estado,
@@ -142,4 +148,57 @@ export function porObra(cotizaciones: Cotizacion[], movimientos: Movimiento[], h
     })
     .filter((o) => o.cobrado || o.gastos || o.planilla || ESTADOS_ACEPTADOS.includes(o.estado))
     .sort((a, b) => b.numero.localeCompare(a.numero, 'es', { numeric: true }));
+}
+
+// ---------------------------------------------------------------------------
+// Presupuesto de la obra (lo cotizado) y gastos estimados al aceptarse
+// ---------------------------------------------------------------------------
+
+/** Lo que se cotizó: materiales (si los compra Arce Nuñez), costos extras y mano de obra. */
+export function presupuesto(c: Cotizacion, catalogo: Material[], tasaIva: number) {
+  const d = ultimaVersion(c).datos;
+  const calc = calcular(d, catalogo, tasaIva);
+  const arce = d.quienCompraMateriales === 'Arce Nuñez';
+  const materiales = arce ? calc.materiales : 0;
+  const manoDeObra = d.modoPrecio === 'Partes + materiales' ? calc.manoDeObra : Math.max(0, calc.subtotal - calc.extras - materiales);
+  return { materiales, extras: calc.extras, manoDeObra };
+}
+
+export type GastoNuevo = Omit<Movimiento, 'id' | 'registradoPor' | 'registrado'>;
+
+/**
+ * Gastos que se registran solos cuando la cotización pasa a "Aceptada": los materiales
+ * (si los compra Arce Nuñez) y cada costo extra. Quedan marcados como "estimado" para
+ * cambiarlos por el monto real.
+ */
+export function gastosEstimados(c: Cotizacion, catalogo: Material[], tasaIva: number, categoriasGasto: string[], fecha = hoyISO()): GastoNuevo[] {
+  const v = ultimaVersion(c);
+  const d = v.datos;
+  const p = presupuesto(c, catalogo, tasaIva);
+  const cat = (preferida: string, palabra: string) =>
+    categoriasGasto.includes(preferida) ? preferida : (categoriasGasto.find((x) => x.toLowerCase().includes(palabra)) ?? preferida);
+  const base = { fecha, tipo: 'Gasto' as const, cotizacion: c.numero, persona: '', metodo: '', comprobante: '', estimado: true };
+  const nota = `Estimado de ${c.numero} v${v.version}: cambialo por el monto real.`;
+  const lista: GastoNuevo[] = [];
+  if (p.materiales > 0) {
+    lista.push({ ...base, categoria: cat('Materiales', 'material'), descripcion: `Materiales según la cotización ${c.numero}`, monto: Math.round(p.materiales), notas: nota });
+  }
+  for (const x of d.extras ?? []) {
+    if (!x.monto || x.monto <= 0) continue;
+    lista.push({ ...base, categoria: x.categoria || cat('Otros gastos', 'otro'), descripcion: `${x.concepto} (${c.numero})`, monto: Math.round(x.monto), notas: nota });
+  }
+  return lista;
+}
+
+/** Categoría de gasto que se sugiere para un costo extra según su nombre. */
+export function categoriaSugerida(concepto: string, categoriasGasto: string[]): string {
+  const t = concepto.toLowerCase();
+  const buscar = (...palabras: string[]) => categoriasGasto.find((c) => palabras.some((p) => c.toLowerCase().includes(p)));
+  if (/transporte|acarreo|flete|viaje/.test(t)) return buscar('transporte', 'acarreo') ?? '';
+  if (/p[oó]liza|seguro|ins|ccss|permiso|impuesto/.test(t)) return buscar('ccss', 'impuesto') ?? '';
+  if (/alquiler|andamio|equipo|formaleta/.test(t)) return buscar('alquiler') ?? '';
+  if (/comida|vi[aá]tico|hospedaje/.test(t)) return buscar('comida', 'viático') ?? '';
+  if (/herramienta|disco|broca/.test(t)) return buscar('herramienta') ?? '';
+  if (/combustible|gasolina|di[eé]sel/.test(t)) return buscar('combustible') ?? '';
+  return buscar('otro') ?? '';
 }

@@ -167,6 +167,16 @@ export interface DatosCotizacion {
   notas: string[];
   /** Rutas de las fotos dentro del repositorio de datos. */
   fotos: string[];
+  /** Costos extras (transporte, pólizas…): se cobran; por defecto el cliente no los ve. */
+  extras: CostoExtra[];
+}
+
+export interface CostoExtra {
+  concepto: string;
+  monto: number | null;
+  /** Categoría de gasto con que se registra cuando la cotización se acepta. */
+  categoria: string;
+  clienteVe: boolean;
 }
 
 export interface Version {
@@ -194,6 +204,8 @@ export interface Cotizacion {
   /** Quién cambió el estado por última vez, y cuándo. */
   estadoPor?: string;
   estadoFecha?: string;
+  /** Cuándo se registraron sus gastos estimados (al aceptarse), para no repetirlos. */
+  gastosRegistrados?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +233,8 @@ export interface Movimiento {
   registrado: string;
   /** Si salió de "Pagar planilla": el pago al que pertenece. */
   pagoPlanilla?: string;
+  /** Gasto estimado que salió de la cotización al aceptarse (hay que ajustarlo al real). */
+  estimado?: boolean;
 }
 
 export interface Hora {

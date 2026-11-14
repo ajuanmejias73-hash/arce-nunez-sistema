@@ -81,6 +81,9 @@ export function normalizarDatos(d: any): DatosCotizacion {
     materiales: normalizarMateriales(d.materiales),
     notas: (Array.isArray(d.notas) ? d.notas : []).map(texto),
     fotos: (Array.isArray(d.fotos) ? d.fotos : []).filter((f: unknown) => typeof f === 'string' && f),
+    extras: (Array.isArray(d.extras) ? d.extras : [])
+      .filter((x: { concepto?: unknown }) => texto(x?.concepto).trim())
+      .map((x: Record<string, unknown>) => ({ concepto: texto(x.concepto).trim(), monto: numONulo(x.monto), categoria: texto(x.categoria), clienteVe: x.clienteVe === true })),
   };
 }
 
@@ -109,6 +112,7 @@ export function normalizarCotizaciones(v: unknown): Cotizacion[] {
         versiones,
         ...(texto(c.notasInternas) ? { notasInternas: texto(c.notasInternas) } : {}),
         ...(texto(c.estadoPor) ? { estadoPor: texto(c.estadoPor), estadoFecha: texto(c.estadoFecha) } : {}),
+        ...(texto(c.gastosRegistrados) ? { gastosRegistrados: texto(c.gastosRegistrados) } : {}),
       };
     })
     .filter((c) => c.versiones.length > 0);
@@ -180,6 +184,10 @@ export interface FilaCalculada extends FilaMaterial {
 
 export interface Calculo {
   manoDeObra: number;
+  /** Suma de todos los costos extras (se cobran). */
+  extras: number;
+  /** Los que el cliente no ve: se meten en "Mano de obra" del desglose para que cuadre. */
+  extrasOcultos: number;
   materiales: number;
   subtotal: number;
   iva: number;
@@ -213,11 +221,14 @@ export function calcular(d: DatosCotizacion, catalogo: Material[], tasaIva: numb
   });
   const manoDeObra = d.partes.reduce((s, p) => s + (p.monto ?? 0), 0);
   const materiales = filas.reduce((s, f) => s + (f.total ?? 0), 0);
-  const subtotal = d.modoPrecio === 'Total a mano' ? (d.totalAMano ?? 0) : manoDeObra + (d.quienCompraMateriales === 'Arce Nuñez' ? materiales : 0);
+  const extras = (d.extras ?? []).reduce((s, x) => s + (x.monto ?? 0), 0);
+  const extrasOcultos = (d.extras ?? []).filter((x) => !x.clienteVe).reduce((s, x) => s + (x.monto ?? 0), 0);
+  const base = d.modoPrecio === 'Total a mano' ? (d.totalAMano ?? 0) : manoDeObra + (d.quienCompraMateriales === 'Arce Nuñez' ? materiales : 0);
+  const subtotal = base + extras;
   const iva = d.cobrarIVA ? Math.round(subtotal * tasaIva) : 0;
   const total = subtotal + iva;
   const adelanto = Math.round(total * d.porcentajeAdelanto);
-  return { manoDeObra, materiales, subtotal, iva, total, adelanto, saldo: total - adelanto, validaHasta: sumarDias(d.fecha, d.validezDias), filas };
+  return { manoDeObra, extras, extrasOcultos, materiales, subtotal, iva, total, adelanto, saldo: total - adelanto, validaHasta: sumarDias(d.fecha, d.validezDias), filas };
 }
 
 // ---------------------------------------------------------------------------

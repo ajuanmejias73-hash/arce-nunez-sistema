@@ -208,6 +208,7 @@ export function normalizarMovimientos(v: unknown): Movimiento[] {
       registradoPor: texto(m.registradoPor),
       registrado: texto(m.registrado),
       ...(texto(m.pagoPlanilla) ? { pagoPlanilla: texto(m.pagoPlanilla) } : {}),
+      ...(m.estimado === true ? { estimado: true } : {}),
     }));
 }
 

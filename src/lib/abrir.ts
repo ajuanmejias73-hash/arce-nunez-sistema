@@ -5,7 +5,8 @@ import { editor } from './editor.svelte.ts';
 import { rutas } from './rutas.svelte.ts';
 import { sesion } from './sesion.svelte.ts';
 import { exportador } from './exportar.svelte.ts';
-import { siguienteNumero, ultimaVersion } from './cotizacion.ts';
+import { ESTADOS_ACEPTADOS, siguienteNumero, ultimaVersion } from './cotizacion.ts';
+import { registrarGastosAlAceptar } from './acciones-contables.ts';
 import { hoyISO } from './formato.ts';
 import { armarVista, nombreArchivo, type ModeloVista } from './modelo.ts';
 import type { Cotizacion, DatosCotizacion, Version } from './tipos.ts';
@@ -66,7 +67,8 @@ export async function cambiarEstado(numero: string, estado: string): Promise<voi
       `cambió ${numero} a «${estado}»`,
       sesion.quien,
     );
-    dialogos.avisar(`${numero}: ${estado}`);
+    const estimados = ESTADOS_ACEPTADOS.includes(estado) ? await registrarGastosAlAceptar(numero) : 0;
+    dialogos.avisar(estimados ? `${numero}: ${estado}. Se registraron ${estimados} gastos estimados de la obra (revisalos en Pagos y gastos).` : `${numero}: ${estado}`);
   } catch (e) {
     dialogos.fallo(e);
   }

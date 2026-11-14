@@ -17,6 +17,8 @@
       <li>Mandala con <strong>Enviar por WhatsApp</strong> (manda solo el PDF) o <strong>Descargar PDF</strong>.</li>
     </ol>
     <p class="ayuda">Lo que escribís se guarda solo en el dispositivo mientras tanto: si se cierra la página, no se pierde.</p>
+    <p><strong>🤖 Cotización automática:</strong> en la cotización, tocá el botón negro, copiá la instrucción y pegala en Claude (claude.ai) con el plano o fotos. Contestá sus preguntas y pegá aquí el código que te da: la cotización se llena sola con sus precios. Revisala antes de guardar.</p>
+    <p><strong>Costos extras</strong> (transporte, pólizas…): se cobran pero el cliente no los ve, salvo que lo activés. Cuando la cotización pasa a "Aceptada", los materiales (si los compra Arce Nuñez) y los extras se registran solos como <em>gastos estimados</em> en Pagos y gastos: editalos con el monto real.</p>
   </section>
 
   <section class="tarjeta">

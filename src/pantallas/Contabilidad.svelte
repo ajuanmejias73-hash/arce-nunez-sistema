@@ -17,7 +17,7 @@
   const anual = $derived(resumenAnual(seleccion.anio, c.movimientos));
   const mes = $derived(anual.meses[seleccion.mes - 1]);
   const categorias = $derived(gastosPorCategoria(seleccion.anio, seleccion.mes, c.movimientos));
-  const obras = $derived(porObra(c.cotizaciones, c.movimientos, c.horas));
+  const obras = $derived(porObra(c.cotizaciones, c.movimientos, c.horas, c.materiales, c.ajustes.porDefecto.iva));
   const colores = $derived(new Map(c.ajustes.listas.estados.map((e) => [e.nombre, e.color])));
   const margen = (m: number | null) => (m === null ? '—' : porcentaje(m));
 </script>
@@ -91,11 +91,11 @@
 
 <section class="tarjeta seccion">
   <h2>Por obra</h2>
-  <p class="ayuda">"Te debe" solo cuenta las obras Aceptadas, En proceso, Terminadas o Pagadas. Ganancia = cobrado − gastos de la obra.</p>
+  <p class="ayuda">"Te debe" solo cuenta las obras Aceptadas, En proceso, Terminadas o Pagadas. Ganancia = cobrado − gastos de la obra. "Presupuesto" es lo que se cotizó en materiales y costos extras; "Gastos" es lo registrado (los estimados cuentan hasta que les pongás el monto real).</p>
   <div class="tabla-envoltura">
     <table class="tabla apilable">
       <thead>
-        <tr><th>N.º</th><th>Cliente</th><th>Estado</th><th class="num">Cotizado</th><th class="num">Cobrado</th><th class="num">Te debe</th><th class="num">Gastos</th><th class="num">Ganancia</th><th class="num">Planilla sin pagar</th></tr>
+        <tr><th>N.º</th><th>Cliente</th><th>Estado</th><th class="num">Cotizado</th><th class="num">Cobrado</th><th class="num">Te debe</th><th class="num">Presupuesto de gastos</th><th class="num">Gastos</th><th class="num">Ganancia</th><th class="num">Mano de obra cotizada</th><th class="num">Planilla (total)</th><th class="num">Planilla sin pagar</th></tr>
       </thead>
       <tbody>
         {#each obras as o (o.numero)}
@@ -106,12 +106,15 @@
             <td data-etiqueta="Cotizado" class="num">{colones(o.total)}</td>
             <td data-etiqueta="Cobrado" class="num">{colones(o.cobrado)}</td>
             <td data-etiqueta="Te debe" class="num"><strong>{colones(o.debe)}</strong></td>
-            <td data-etiqueta="Gastos" class="num">{colones(o.gastos)}</td>
+            <td data-etiqueta="Presupuesto de gastos" class="num">{colones(o.presupuestoGastos)}</td>
+            <td data-etiqueta="Gastos" class="num" class:pasado={o.presupuestoGastos > 0 && o.gastos > o.presupuestoGastos}>{colones(o.gastos)}{#if o.estimados}<small class="est">incluye estimados</small>{/if}</td>
             <td data-etiqueta="Ganancia" class="num" class:negativo={o.ganancia < 0}>{colones(o.ganancia)}</td>
+            <td data-etiqueta="Mano de obra cotizada" class="num">{colones(o.manoDeObraCotizada)}</td>
+            <td data-etiqueta="Planilla (total)" class="num" class:pasado={o.manoDeObraCotizada > 0 && o.planillaTotal > o.manoDeObraCotizada}>{colones(o.planillaTotal)}</td>
             <td data-etiqueta="Planilla sin pagar" class="num">{colones(o.planilla)}</td>
           </tr>
         {:else}
-          <tr><td colspan="9" class="vacio sin-etiqueta">Todavía no hay obras aceptadas ni movimientos.</td></tr>
+          <tr><td colspan="12" class="vacio sin-etiqueta">Todavía no hay obras aceptadas ni movimientos.</td></tr>
         {/each}
       </tbody>
     </table>
@@ -170,6 +173,15 @@
   tr.total td {
     font-weight: 700;
     border-top: 2px solid var(--carbon);
+  }
+  .pasado {
+    color: var(--rojo);
+    font-weight: 700;
+  }
+  .est {
+    display: block;
+    font-size: 0.72rem;
+    color: #8a6400;
   }
   .estado {
     color: #fff;

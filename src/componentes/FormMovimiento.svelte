@@ -26,7 +26,8 @@
     metodo: inicial?.metodo ?? datos.c!.ajustes.listas.metodosPago[0] ?? '',
     monto: (inicial?.monto ?? null) as number | null,
     comprobante: inicial?.comprobante ?? '',
-    notas: inicial?.notas ?? '',
+    // La nota automática de los estimados se quita al poner el monto real.
+    notas: inicial?.estimado && /^Estimado de /.test(inicial.notas) ? '' : (inicial?.notas ?? ''),
   });
   if (!f.categoria) f.categoria = (tipoInicial === 'Gasto' ? datos.c!.ajustes.listas.categoriasGasto : datos.c!.ajustes.listas.categoriasIngreso.filter((x) => x === 'Otro ingreso'))[0] ?? '';
   let guardando = $state(false);
@@ -63,6 +64,9 @@
 </script>
 
 <form onsubmit={enviar} class="form">
+  {#if inicial?.estimado}
+    <p class="aviso-estimado">Este gasto es un <strong>estimado</strong> que salió de la cotización. Poné el monto real: al guardar deja de ser estimado.</p>
+  {/if}
   <div class="campos">
     <label>
       Categoría
@@ -99,5 +103,12 @@
   .form {
     display: grid;
     gap: 14px;
+  }
+  .aviso-estimado {
+    background: #fff1c9;
+    border: 1px solid #ecd58f;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 0;
   }
 </style>
