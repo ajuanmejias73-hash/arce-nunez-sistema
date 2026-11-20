@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { conexionGuardada, esPrueba, olvidarConexion } from '../lib/conexion.ts';
   import { datos } from '../lib/datos.svelte.ts';
   import { dialogos } from '../lib/dialogos.svelte.ts';
@@ -104,6 +105,12 @@
 
   // ---------- Personas y PIN ----------
   const usuariosCambio = $derived(!igual(usuarios, datos.c!.ajustes.usuarios));
+
+  async function agregarPersona() {
+    usuarios.push({ nombre: '', pin: '' });
+    await tick();
+    document.querySelector<HTMLInputElement>(`[data-persona="${usuarios.length - 1}"]`)?.focus();
+  }
 
   async function guardarUsuarios() {
     const lista = $state.snapshot(usuarios).map((u) => ({ nombre: u.nombre.trim(), pin: u.pin.trim() }));
@@ -250,12 +257,16 @@
   </div>
   {#each usuarios as u, i}
     <div class="campos persona">
-      <label>Nombre <input bind:value={u.nombre} /></label>
+      <label>Nombre <input bind:value={u.nombre} data-persona={i} /></label>
       <label>PIN (4 a 8 números) <input bind:value={u.pin} inputmode="numeric" autocomplete="off" maxlength="8" /></label>
+      {#if i >= datos.c!.ajustes.usuarios.length}
+        <button class="btn-borde btn-chico quitar-persona" onclick={() => usuarios.splice(i, 1)}>Quitar</button>
+      {/if}
     </div>
     {#if i < usuarios.length - 1}<hr />{/if}
   {/each}
   <div class="acciones pie">
+    <button class="btn-borde" onclick={agregarPersona} disabled={!!guardandoSeccion}>+ Agregar persona</button>
     <button class="btn" onclick={guardarUsuarios} disabled={!usuariosCambio || !!guardandoSeccion}>
       {guardandoSeccion === 'usuarios' ? 'Guardando…' : 'Guardar personas'}
     </button>
@@ -363,6 +374,11 @@
   }
   .subir:focus-within {
     outline: 2px solid var(--dorado);
+  }
+  .quitar-persona {
+    align-self: end;
+    justify-self: start;
+    margin-bottom: 4px;
   }
   .persona {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
