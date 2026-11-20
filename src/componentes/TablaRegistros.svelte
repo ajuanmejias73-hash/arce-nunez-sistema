@@ -22,6 +22,10 @@
     nombreSingular,
     guardar,
     borrar,
+    buscador = true,
+    limite = Infinity,
+    total,
+    nuevoCon = {},
   }: {
     registros: Registro[];
     columnas: Columna[];
@@ -29,7 +33,22 @@
     /** `original` = nombre antes de editar (null si es nuevo). */
     guardar: (original: string | null, nuevo: Registro) => Promise<boolean>;
     borrar: (nombre: string) => Promise<boolean>;
+    /** false = el buscador está afuera (la lista ya viene filtrada). */
+    buscador?: boolean;
+    /** Cuántas filas dibujar de una vez (para listas muy largas). */
+    limite?: number;
+    /** Total del catálogo, para el "x de y" cuando la lista ya viene filtrada. */
+    total?: number;
+    /** Valores con que empieza una fila nueva. */
+    nuevoCon?: Record<string, string>;
   } = $props();
+
+  let mostrarHasta = $state(Infinity);
+  // Al cambiar la lista (otro filtro), se vuelve a ver solo el primer bloque.
+  $effect(() => {
+    void registros;
+    mostrarHasta = limite;
+  });
 
   const clave = $derived(columnas[0].campo);
 
@@ -60,6 +79,7 @@
       b[c.campo] = v === null || v === undefined ? '' : String(v);
     }
     if (!r) for (const c of columnas) if (c.tipo === 'opciones' && c.obligatorio && c.opciones?.length) b[c.campo] = c.opciones[0];
+    if (!r) for (const [k, v] of Object.entries(nuevoCon)) if (v) b[k] = v;
     borrador = b;
     editando = r ? String(r[clave]) : '';
   }
@@ -153,9 +173,9 @@
 {/snippet}
 
 <div class="herramientas">
-  <input type="search" bind:value={buscar} placeholder="Buscar…" aria-label="Buscar" />
+  {#if buscador}<input type="search" bind:value={buscar} placeholder="Buscar…" aria-label="Buscar" />{/if}
   <button class="btn-dorado" onclick={() => empezar(null)} disabled={editando === ''}>+ Nuevo</button>
-  <span class="ayuda">{filtrados.length} de {registros.length}</span>
+  <span class="ayuda">{filtrados.length.toLocaleString('es-CR')} de {(total ?? registros.length).toLocaleString('es-CR')}</span>
 </div>
 
 <div class="tabla-envoltura">
@@ -168,7 +188,7 @@
     </thead>
     <tbody>
       {#if editando === ''}{@render filaEditable()}{/if}
-      {#each filtrados as r (String(r[clave]))}
+      {#each filtrados.slice(0, mostrarHasta) as r (String(r[clave]))}
         {#if editando === String(r[clave])}
           {@render filaEditable()}
         {:else}
@@ -186,12 +206,18 @@
         {/if}
       {:else}
         {#if editando !== ''}
-          <tr><td colspan={columnas.length + 1} class="vacio sin-etiqueta">{buscar ? 'Nada coincide con la búsqueda.' : `Todavía no hay ${nombreSingular}s. Tocá "+ Nuevo".`}</td></tr>
+          <tr><td colspan={columnas.length + 1} class="vacio sin-etiqueta">{buscar || !buscador ? 'Nada coincide con la búsqueda.' : `Todavía no hay ${nombreSingular}s. Tocá "+ Nuevo".`}</td></tr>
         {/if}
       {/each}
     </tbody>
   </table>
 </div>
+{#if filtrados.length > mostrarHasta}
+  <p class="mas">
+    Se ven {mostrarHasta.toLocaleString('es-CR')} de {filtrados.length.toLocaleString('es-CR')}.
+    <button class="btn-borde btn-chico" onclick={() => (mostrarHasta += limite)}>Ver más</button>
+  </p>
+{/if}
 
 <style>
   .herramientas {
@@ -208,6 +234,13 @@
   .fila-acciones {
     justify-content: flex-end;
     flex-wrap: nowrap;
+  }
+  .mas {
+    margin: 10px 0 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    color: var(--suave);
   }
   td.nombre {
     font-weight: 600;

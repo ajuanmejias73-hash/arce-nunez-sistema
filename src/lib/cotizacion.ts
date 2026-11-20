@@ -224,8 +224,16 @@ export function montoDescuento(ds: DatosCotizacion['descuento'], base: number): 
   return Math.min(Math.round(m), base);
 }
 
+/** Buscar materiales por nombre, también por el nombre que tenían antes (si nadie más lo usa). */
+export function porNombreConAntes(catalogo: Material[]): Map<string, Material> {
+  const mapa = new Map<string, Material>();
+  for (const m of catalogo) for (const viejo of m.antes ?? []) if (!mapa.has(viejo)) mapa.set(viejo, m);
+  for (const m of catalogo) mapa.set(m.material, m);
+  return mapa;
+}
+
 export function calcular(d: DatosCotizacion, catalogo: Material[], tasaIva: number): Calculo {
-  const porNombre = new Map(catalogo.map((m) => [m.material, m]));
+  const porNombre = porNombreConAntes(catalogo);
   const filas: FilaCalculada[] = d.materiales.map((f) => {
     const cat = porNombre.get(f.material.trim());
     const precioCatalogo = cat?.precio ?? null;

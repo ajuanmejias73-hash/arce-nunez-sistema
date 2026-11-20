@@ -17,7 +17,8 @@
       <li>Mandala con <strong>Enviar por WhatsApp</strong> (manda solo el PDF) o <strong>Descargar PDF</strong>.</li>
     </ol>
     <p class="ayuda">Lo que escribís se guarda solo en el dispositivo mientras tanto: si se cierra la página, no se pierde.</p>
-    <p><strong>🤖 Cotización automática:</strong> en la cotización, tocá el botón negro, copiá la instrucción y pegala en Claude (claude.ai) con el plano o fotos. Contestá sus preguntas y pegá aquí el código que te da: la cotización se llena sola con sus precios. Revisala antes de guardar.</p>
+    <p><strong>Materiales:</strong> en la cotización, en <strong>Escoger del catálogo</strong>, escogé la categoría, después el tipo (por ejemplo "Tornillo Gypsum Punta Broca") y después la medida, que ya trae el precio de El Lagar. Tocá <strong>Agregar</strong> y poné la cantidad. Si un material no está, usá "+ Material escrito a mano".</p>
+    <p><strong>🤖 Cotización automática:</strong> en la cotización, tocá el botón negro, marcá las categorías de materiales que lleva el trabajo, copiá la instrucción y pegala en Claude (claude.ai) con el plano o fotos. Contestá sus preguntas y pegá aquí el código que te da: la cotización se llena sola con sus precios. Revisala antes de guardar.</p>
     <p><strong>Costos extras</strong> (transporte, pólizas…): se cobran pero el cliente no los ve, salvo que lo activés. Cuando la cotización pasa a "Aceptada", los materiales (si los compra Arce Nuñez) y los extras se registran solos como <em>gastos estimados</em> en Pagos y gastos: editalos con el monto real.</p>
   </section>
 
@@ -31,7 +32,16 @@
   </section>
 
   <section class="tarjeta">
-    <h2>3. Plata</h2>
+    <h2>3. Catálogo de materiales</h2>
+    <ul>
+      <li>En <button class="enlace" onclick={() => rutas.ir('catalogos')}>Catálogos</button> → Materiales están los materiales de El Lagar, ordenados por categoría, tipo y medida.</li>
+      <li>Para encontrar uno, escogé la categoría y el tipo, o escribí palabras en <strong>Buscar</strong> (por ejemplo "tornillo broca 1/2").</li>
+      <li>Los precios se pueden cambiar con <strong>Editar</strong>. Las cotizaciones ya guardadas no cambian.</li>
+    </ul>
+  </section>
+
+  <section class="tarjeta">
+    <h2>4. Plata</h2>
     <ul>
       <li><strong>Pago de cliente</strong>: escogé la cotización; el sistema sugiere el adelanto o lo que falta, y pone solo la categoría y el estado (Aceptada o Pagada).</li>
       <li><strong>Gasto</strong>: materiales, combustible, etc. Si es de una obra, escogela para ver la ganancia por obra.</li>
@@ -41,7 +51,7 @@
   </section>
 
   <section class="tarjeta">
-    <h2>4. Cuidados</h2>
+    <h2>5. Cuidados</h2>
     <ul>
       <li>Todo lo que se guarda queda con el nombre de quien lo hizo (Pablo o Lin).</li>
       <li>Si los dos usan el sistema a la vez, la página se pone al día sola cada poco y avisa los cambios del otro.</li>

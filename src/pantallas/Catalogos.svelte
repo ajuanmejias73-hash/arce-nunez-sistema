@@ -5,6 +5,7 @@
   import { FORMAS_COBRO, type Listas } from '../lib/tipos.ts';
   import TablaRegistros, { type Columna } from '../componentes/TablaRegistros.svelte';
   import ListaSimple, { type Elemento } from '../componentes/ListaSimple.svelte';
+  import { buscar, categoriaDe, categorias, tipoDe, tipos } from '../lib/catalogo.ts';
 
   type ListaTexto = Exclude<keyof Listas, 'estados'>;
 
@@ -28,11 +29,26 @@
 
   const colMateriales = $derived<Columna[]>([
     { campo: 'material', titulo: 'Material', tipo: 'texto' },
+    { campo: 'tipo', titulo: 'Tipo', tipo: 'texto' },
+    { campo: 'medida', titulo: 'Medida', tipo: 'texto' },
     { campo: 'unidad', titulo: 'Unidad', tipo: 'opciones', opciones: listas.unidades, obligatorio: true },
     { campo: 'precio', titulo: 'Precio', tipo: 'dinero' },
     { campo: 'categoria', titulo: 'Categoría', tipo: 'opciones', opciones: listas.categoriasMaterial },
     { campo: 'notas', titulo: 'Notas', tipo: 'texto' },
   ]);
+
+  // Filtros de la pestaña Materiales (el catálogo puede tener miles).
+  let filtroCategoria = $state('');
+  let filtroTipo = $state('');
+  let filtroTexto = $state('');
+  const catMateriales = $derived(categorias(c.materiales));
+  const tiposFiltro = $derived(filtroCategoria ? tipos(c.materiales, filtroCategoria) : []);
+  const materialesFiltrados = $derived(
+    buscar(
+      c.materiales.filter((m) => (!filtroCategoria || categoriaDe(m) === filtroCategoria) && (!filtroTipo || tipoDe(m) === filtroTipo)),
+      filtroTexto,
+    ),
+  );
 
   const colServicios = $derived<Columna[]>([
     { campo: 'servicio', titulo: 'Servicio', tipo: 'texto' },
@@ -75,7 +91,8 @@
               const nombre = String(nuevo[campo]).toLowerCase();
               const i = original === null ? -1 : l.findIndex((x) => x[campo] === original);
               if (l.some((x, j) => j !== i && String(x[campo]).toLowerCase() === nombre)) throw new Error(`ya existe «${nuevo[campo]}».`);
-              const registro = { ...nuevo, ...firma() };
+              // Se combina con el registro de antes para no perder lo que no sale en la tabla (ej. el código de El Lagar).
+              const registro = { ...(i >= 0 ? l[i] : {}), ...nuevo, ...firma() };
               if (i >= 0) l[i] = registro;
               else l.push(registro);
             },
@@ -185,8 +202,32 @@
 <section class="tarjeta" role="tabpanel">
   {#key pestana}
     {#if pestana === 'materiales'}
+      <div class="filtros">
+        <label>
+          <span>Categoría</span>
+          <select bind:value={filtroCategoria} onchange={() => (filtroTipo = '')}>
+            <option value="">Todas ({c.materiales.length.toLocaleString('es-CR')})</option>
+            {#each catMateriales as cat (cat.nombre)}<option value={cat.nombre}>{cat.nombre} ({cat.cantidad})</option>{/each}
+          </select>
+        </label>
+        <label>
+          <span>Tipo</span>
+          <select bind:value={filtroTipo} disabled={!filtroCategoria}>
+            <option value="">Todos</option>
+            {#each tiposFiltro as t (t.nombre)}<option value={t.nombre}>{t.nombre} ({t.cantidad})</option>{/each}
+          </select>
+        </label>
+        <label class="ancho">
+          <span>Buscar</span>
+          <input type="search" bind:value={filtroTexto} placeholder="Ej.: tornillo gypsum broca" />
+        </label>
+      </div>
       <TablaRegistros
-        registros={c.materiales as never}
+        registros={materialesFiltrados as never}
+        buscador={false}
+        limite={100}
+        total={c.materiales.length}
+        nuevoCon={{ categoria: filtroCategoria, tipo: filtroTipo }}
         columnas={colMateriales}
         nombreSingular="material"
         guardar={guardarRegistro('materiales', 'material', 'el material')}
@@ -222,6 +263,32 @@
 </section>
 
 <style>
+  .filtros {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .filtros label {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .filtros span {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--suave);
+  }
+  .filtros select,
+  .filtros input {
+    margin: 0;
+    width: 100%;
+  }
+  @media (max-width: 760px) {
+    .filtros {
+      grid-template-columns: 1fr;
+    }
+  }
   .pestanas {
     display: flex;
     gap: 6px;

@@ -4,6 +4,7 @@
    * allá, y pegar aquí el código que devuelve para llenar la cotización.
    */
   import { instruccionCotizacion, leerCodigo } from '../lib/autocotizar.ts';
+  import { categorias } from '../lib/catalogo.ts';
   import { datos } from '../lib/datos.svelte.ts';
   import { dialogos } from '../lib/dialogos.svelte.ts';
   import { editor } from '../lib/editor.svelte.ts';
@@ -15,11 +16,37 @@
   let avisos = $state<string[]>([]);
   let copiada = $state(false);
 
+  // Qué categorías de materiales van en la instrucción (se recuerdan en este aparato).
+  const GUARDADAS = 'arce.automatica.categorias';
+  function leerGuardadas(): string[] | null {
+    try {
+      const v = JSON.parse(localStorage.getItem(GUARDADAS) ?? 'null');
+      return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : null;
+    } catch {
+      return null;
+    }
+  }
+  const todasCategorias = $derived(categorias(datos.c?.materiales ?? []));
+  /** Con pocos materiales van todos; con el catálogo grande se escogen las categorías. */
+  const escoger = $derived((datos.c?.materiales.length ?? 0) > 300);
+  let escogidas = $state<string[]>(leerGuardadas() ?? []);
+  function cambiarCategoria(nombre: string, si: boolean) {
+    escogidas = si ? [...new Set([...escogidas, nombre])] : escogidas.filter((x) => x !== nombre);
+    copiada = false;
+    try {
+      localStorage.setItem(GUARDADAS, JSON.stringify(escogidas));
+    } catch {
+      /* sin memoria en este aparato: no pasa nada */
+    }
+  }
+  const cantidadEscogida = $derived(todasCategorias.filter((c) => escogidas.includes(c.nombre)).reduce((s, c) => s + c.cantidad, 0));
+
   const instruccion = $derived.by(() => {
     if (!datos.c || !editor.d) return '';
     const d = editor.d;
     return instruccionCotizacion({
       ajustes: datos.c.ajustes,
+      ...(escoger ? { categorias: escogidas } : {}),
       materiales: datos.c.materiales,
       servicios: datos.c.servicios,
       cotizaciones: datos.c.cotizaciones,
@@ -79,6 +106,27 @@
     </div>
   {:else}
     <ol class="pasos">
+      {#if escoger}
+        <li>
+          <strong>Escogé qué materiales lleva el trabajo.</strong> Solo esas categorías van con sus precios (si van todas, la instrucción queda demasiado larga).
+          <div class="categorias">
+            {#each todasCategorias as cat (cat.nombre)}
+              <label class="categoria">
+                <input type="checkbox" checked={escogidas.includes(cat.nombre)} onchange={(ev) => cambiarCategoria(cat.nombre, ev.currentTarget.checked)} />
+                <span>{cat.nombre} <small>({cat.cantidad})</small></span>
+              </label>
+            {/each}
+          </div>
+          <p class="ayuda" class:alerta={!cantidadEscogida || cantidadEscogida > 2500}>
+            {#if !cantidadEscogida}
+              No escogiste ninguna: Claude te va a preguntar el precio de cada material.
+            {:else}
+              Van {cantidadEscogida.toLocaleString('es-CR')} materiales.{cantidadEscogida > 2500 ? ' Son muchos: Claude podría no recibir la instrucción completa. Quitá las que no hagan falta.' : ''}
+            {/if}
+            {#if escogidas.length}<button class="enlace" onclick={() => todasCategorias.forEach((c) => cambiarCategoria(c.nombre, false))}>Quitar todas</button>{/if}
+          </p>
+        </li>
+      {/if}
       <li>
         <strong>Copiá la instrucción.</strong> Ya trae sus precios, servicios, condiciones y ejemplos de sus cotizaciones.
         <div class="acciones">
@@ -131,6 +179,45 @@
     font-size: 0.78rem;
     max-height: 260px;
     overflow: auto;
+  }
+  .categorias {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 2px 10px;
+    margin-top: 8px;
+    max-height: 260px;
+    overflow: auto;
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+  .categoria {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.88rem;
+    font-weight: 500;
+    min-height: 32px;
+  }
+  .categoria input {
+    margin: 0;
+    width: auto;
+  }
+  .categoria small {
+    color: var(--suave);
+  }
+  .alerta {
+    color: var(--dorado-osc);
+    font-weight: 600;
+  }
+  .enlace {
+    background: none;
+    border: none;
+    padding: 0 0 0 8px;
+    min-height: 0;
+    color: var(--dorado-osc);
+    text-decoration: underline;
+    font-size: 0.85rem;
   }
   .listo ul {
     padding-left: 20px;

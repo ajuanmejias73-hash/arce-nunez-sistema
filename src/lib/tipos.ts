@@ -88,6 +88,14 @@ export interface Material extends Firma {
   precio: number | null;
   categoria: string;
   notas: string;
+  /** Para agrupar dentro de la categoría (ej. "Tornillo Gypsum Punta Broca"). */
+  tipo?: string;
+  /** La medida (ej. 6 X 1 1/4" 100 Unidades). */
+  medida?: string;
+  /** De dónde salió el precio (ej. "lagar:7084675" = artículo de El Lagar). */
+  codigo?: string;
+  /** Nombres que tenía antes (las cotizaciones viejas lo siguen encontrando por ellos). */
+  antes?: string[];
 }
 
 export const FORMAS_COBRO = ['Por hora', 'Por m²', 'Por metro lineal', 'Por día', 'Precio fijo'] as const;

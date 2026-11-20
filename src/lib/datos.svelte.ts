@@ -99,14 +99,29 @@ class Datos {
     const ultimo = cambio ?? (await repo.ultimoCambio().catch(() => null))?.sha ?? null;
     const escriturasAntes = this.escrituras;
     const claves = Object.keys(ARCHIVOS) as Clave[];
-    const leidos = await Promise.all(claves.map((k) => repo.leerJson<unknown>(ARCHIVOS[k].ruta)));
-    if (!leidos[0]) {
+    // Los archivos que no cambiaron no se vuelven a bajar (el catálogo de materiales es grande).
+    const anterior = this.c;
+    let iguales = new Set<Clave>();
+    if (anterior && ultimo) {
+      try {
+        const h = await repo.huellas(ultimo);
+        iguales = new Set(claves.filter((k) => this.shas[k] && h.get(ARCHIVOS[k].ruta) === this.shas[k]));
+      } catch {
+        iguales = new Set(); // si no se pudo saber, se lee todo
+      }
+    }
+    const leidos = await Promise.all(claves.map((k) => (iguales.has(k) ? Promise.resolve(undefined) : repo.leerJson<unknown>(ARCHIVOS[k].ruta))));
+    if (!iguales.has('ajustes') && !leidos[claves.indexOf('ajustes')]) {
       throw new Error('El repositorio de datos no tiene el archivo ajustes.json. Hay que cargarle los datos iniciales.');
     }
     if (this.escrituras !== escriturasAntes || this.guardando > 0) return false;
     this.ultimoVisto = ultimo;
     const nuevo: Record<string, unknown> = {};
     claves.forEach((k, i) => {
+      if (iguales.has(k) && anterior) {
+        nuevo[k] = anterior[k];
+        return;
+      }
       nuevo[k] = ARCHIVOS[k].normalizar(leidos[i]?.datos ?? null);
       this.shas[k] = leidos[i]?.sha ?? null;
     });

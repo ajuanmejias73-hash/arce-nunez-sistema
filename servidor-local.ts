@@ -6,7 +6,7 @@
  * Los datos se guardan en la carpeta datos_prueba/ (copia de datos_iniciales/).
  */
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
@@ -57,6 +57,16 @@ export function servidorDatosLocal(raiz: string): Plugin {
 
           const resto = url.pathname.slice(PREFIJO.length);
           if (resto === '/commits' && req.method === 'GET') return responder(res, 200, [ultimo]);
+          // Lista de la carpeta principal con la huella de cada archivo.
+          if (resto === '/contents' && req.method === 'GET') {
+            return responder(
+              res,
+              200,
+              readdirSync(carpeta, { withFileTypes: true })
+                .filter((e) => e.isFile())
+                .map((e) => ({ type: 'file', path: e.name, sha: shaDe(readFileSync(resolve(carpeta, e.name))) })),
+            );
+          }
           if (!resto.startsWith('/contents/')) return responder(res, 404, { message: 'Not Found' });
           const ruta = decodeURIComponent(resto.slice('/contents/'.length));
           const archivo = resolve(carpeta, ruta);

@@ -133,6 +133,17 @@ export class RepoDatos {
     return lista[0] ? { sha: lista[0].sha, mensaje: lista[0].commit?.message ?? '' } : null;
   }
 
+  /**
+   * Las huellas (sha) de los archivos de la carpeta principal tal como quedaron en el cambio
+   * `ref`, en una sola consulta. Sirve para leer de nuevo solo los archivos que cambiaron.
+   */
+  async huellas(ref: string): Promise<Map<string, string>> {
+    const r = await this.pedir(`${this.raiz}/contents?ref=${encodeURIComponent(ref)}`);
+    if (!r.ok) await this.fallar(r);
+    const lista = (await r.json()) as { path: string; sha: string; type: string }[];
+    return new Map(lista.filter((x) => x.type === 'file').map((x) => [x.path, x.sha]));
+  }
+
   /** Lee un archivo. Devuelve null si no existe. */
   async leer(ruta: string): Promise<Archivo | null> {
     const r = await this.pedir(this.url(ruta));

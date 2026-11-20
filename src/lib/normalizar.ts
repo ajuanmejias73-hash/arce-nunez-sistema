@@ -146,6 +146,10 @@ export function normalizarMateriales(v: unknown): Material[] {
       precio: numeroONulo(m.precio),
       categoria: texto(m.categoria),
       notas: texto(m.notas),
+      ...(texto(m.tipo).trim() ? { tipo: texto(m.tipo).trim() } : {}),
+      ...(texto(m.medida).trim() ? { medida: texto(m.medida).trim() } : {}),
+      ...(texto(m.codigo).trim() ? { codigo: texto(m.codigo).trim() } : {}),
+      ...(listaTextos(m.antes).length ? { antes: listaTextos(m.antes) } : {}),
       ...firma(m),
     }));
 }

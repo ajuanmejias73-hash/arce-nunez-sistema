@@ -7,6 +7,7 @@
 import { categoriaSugerida } from './contabilidad.ts';
 import { colones, porcentaje } from './formato.ts';
 import { normalizarDatos, ultimaVersion } from './cotizacion.ts';
+import { categoriaDe } from './catalogo.ts';
 import type { Ajustes, Cotizacion, DatosCotizacion, Material, Servicio } from './tipos.ts';
 
 export const MARCA_CODIGO = 'arce_nunez_cotizacion';
@@ -35,6 +36,8 @@ export interface Contexto {
   materiales: Material[];
   servicios: Servicio[];
   cotizaciones: Cotizacion[];
+  /** Solo los materiales de estas categorías (sin esto van todos). */
+  categorias?: string[];
   /** Si la cotización abierta ya tiene datos del cliente, se le pasan a Claude. */
   actual?: Pick<DatosCotizacion, 'cliente' | 'telefono' | 'ubicacion' | 'tipoTrabajo' | 'trabajoSolicitado'>;
 }
@@ -43,8 +46,20 @@ export interface Contexto {
 export function instruccionCotizacion(x: Contexto): string {
   const e = x.ajustes.empresa;
   const d = x.ajustes.porDefecto;
-  const conPrecio = x.materiales.filter((m) => m.precio !== null);
-  const sinPrecio = x.materiales.filter((m) => m.precio === null);
+  const escogidas = x.categorias ? new Set(x.categorias) : null;
+  const lista = escogidas ? x.materiales.filter((m) => escogidas.has(categoriaDe(m))) : x.materiales;
+  const conPrecio = lista.filter((m) => m.precio !== null);
+  const sinPrecio = lista.filter((m) => m.precio === null);
+  /** Agrupados por categoría, para que la lista sea más corta y ordenada. */
+  const porCategoria = (ms: Material[], renglon: (m: Material) => string) => {
+    const grupos = new Map<string, string[]>();
+    for (const m of ms) {
+      const c = categoriaDe(m);
+      if (!grupos.has(c)) grupos.set(c, []);
+      grupos.get(c)!.push(renglon(m));
+    }
+    return [...grupos].map(([c, rs]) => `▸ ${c}:\n${rs.join('\n')}`).join('\n\n');
+  };
   const servicios = x.servicios.map((s) => `- ${s.servicio} (${s.formaCobro}${s.precio !== null ? `: ${colones(s.precio)}` : ': sin precio'})${s.descripcion ? ` — ${s.descripcion}` : ''}`);
   const actual = x.actual && (x.actual.cliente || x.actual.trabajoSolicitado)
     ? `\nYA SABEMOS ESTO (no lo vuelvas a preguntar, solo confirmalo al final):\n${[
@@ -82,12 +97,12 @@ Mano de obra según nuestros servicios:
 ${servicios.length ? servicios.join('\n') : '- (todavía no hay servicios con precio: preguntame cuánto cobramos por cada Parte)'}
 
 Materiales con precio (en colones):
-${conPrecio.length ? conPrecio.map((m) => `- ${m.material} | ${m.unidad} | ${colones(m.precio)}`).join('\n') : '- (no hay materiales con precio)'}
+${conPrecio.length ? porCategoria(conPrecio, (m) => `- ${m.material} | ${m.unidad} | ${colones(m.precio)}`) : '- (no hay materiales con precio)'}
 
 Materiales del catálogo sin precio (usá el nombre igual, sin precio):
-${sinPrecio.length ? sinPrecio.map((m) => `- ${m.material} (${m.unidad})`).join('\n') : '- (ninguno)'}
+${sinPrecio.length ? porCategoria(sinPrecio, (m) => `- ${m.material} (${m.unidad})`) : '- (ninguno)'}
 
-Si un trabajo o material no tiene precio aquí, preguntame cuánto cobramos (dame opciones de montos razonables en colones y "Otro").
+${escogidas ? 'Aquí solo van los materiales de las categorías que escogí. Si hace falta otro material, preguntame su precio.\n' : ''}Si un trabajo o material no tiene precio aquí, preguntame cuánto cobramos (dame opciones de montos razonables en colones y "Otro").
 
 ═══════════════ EJEMPLOS DE CÓMO ESCRIBIMOS ═══════════════
 ${ejemplos(x.cotizaciones) || '(sin ejemplos todavía)'}
