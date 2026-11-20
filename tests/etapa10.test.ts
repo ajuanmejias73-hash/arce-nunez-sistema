@@ -108,3 +108,26 @@ describe('proveedores', () => {
     expect(proveedorEnUso('Otro proveedor', [c], movs)).toBe(false);
   });
 });
+
+describe('montos de las Partes', () => {
+  const d = (partes: DatosCotizacion['partes']) =>
+    normalizarDatos({ ...datosNuevos(ajustes, 'COT-0010'), cliente: 'Ana', partes, clienteVe: { montoPartes: true, preciosMateriales: true, desglose: true, adelantoSaldo: true } });
+
+  it('se esconde el monto de una Parte sin cambiar el total', () => {
+    const datos = d([
+      { nombre: 'Estructura', monto: 100000, renglones: [] },
+      { nombre: 'Materiales', monto: 150000, renglones: [], montoVisible: false },
+    ]);
+    expect(datos.partes[1].montoVisible).toBe(false);
+    expect('montoVisible' in datos.partes[0]).toBe(false);
+    const { vista, calculo } = armarVista(datos, ajustes, []);
+    expect(vista.partes.map((p) => p.monto)).toEqual(['₡100,000', '']);
+    expect(vista.mostrarMontos).toBe(true);
+    expect(calculo.manoDeObra).toBe(250000);
+  });
+
+  it('si se esconden todos, no sale la columna de montos', () => {
+    const datos = d([{ nombre: 'Estructura', monto: 100000, renglones: [], montoVisible: false }]);
+    expect(armarVista(datos, ajustes, []).vista.mostrarMontos).toBe(false);
+  });
+});

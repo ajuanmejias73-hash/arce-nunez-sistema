@@ -95,6 +95,20 @@
   }
 </script>
 
+{#if porPartes && d.partes.length}
+  {@const visibles = d.partes.filter((p) => p.montoVisible !== false).length}
+  <div class="todos">
+    {#if d.clienteVe.montoPartes}
+      <span>El cliente ve el monto de <strong>{visibles} de {d.partes.length}</strong> Partes.</span>
+      <button class="btn-borde btn-chico" onclick={() => d.partes.forEach((p) => (p.montoVisible = true))} disabled={visibles === d.partes.length}>Mostrar todos</button>
+      <button class="btn-borde btn-chico" onclick={() => d.partes.forEach((p) => (p.montoVisible = false))} disabled={visibles === 0}>Ocultar todos</button>
+    {:else}
+      <span>Los montos de las Partes están ocultos para el cliente.</span>
+      <button class="btn-borde btn-chico" onclick={() => ((d.clienteVe.montoPartes = true), d.partes.forEach((p) => (p.montoVisible = true)))}>Mostrar montos</button>
+    {/if}
+  </div>
+{/if}
+
 <div class="partes" bind:this={lista}>
   {#each d.partes as p, i}
     <div class="parte">
@@ -112,6 +126,12 @@
         <label>
           Monto (₡)
           <CampoNumero bind:valor={p.monto} dinero etiqueta="Monto de la Parte" />
+          {#if porPartes}
+            <span class="ve-monto">
+              <input type="checkbox" bind:checked={() => p.montoVisible !== false, (v) => (p.montoVisible = v)} aria-label="El cliente ve el monto de esta Parte" />
+              {p.montoVisible !== false ? 'El cliente lo ve' : 'Oculto (igual cuenta)'}
+            </span>
+          {/if}
         </label>
       </div>
       {#if !porPartes && p.monto !== null}
@@ -171,6 +191,27 @@
 <p class="ayuda">Consejo: en un renglón, Enter crea el siguiente renglón.</p>
 
 <style>
+  .todos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+  }
+  .ve-monto {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--suave);
+    margin-top: 4px;
+  }
+  .ve-monto input {
+    width: 18px;
+    height: 18px;
+  }
   .partes {
     display: grid;
     gap: 14px;

@@ -105,6 +105,12 @@
 </datalist>
 
 {#if d.materiales.length}
+  {@const vistos = d.materiales.filter((f) => f.clienteVe).length}
+  <div class="todos">
+    <span>El cliente ve <strong>{vistos} de {d.materiales.length}</strong> materiales.</span>
+    <button class="btn-borde btn-chico" onclick={() => d.materiales.forEach((f) => (f.clienteVe = true))} disabled={vistos === d.materiales.length}>Mostrar todos</button>
+    <button class="btn-borde btn-chico" onclick={() => d.materiales.forEach((f) => (f.clienteVe = false))} disabled={vistos === 0}>Ocultar todos</button>
+  </div>
   <div class="filas">
     <div class="fila cabeza" aria-hidden="true">
       <span>Material</span><span>Cantidad</span><span>Unidad</span><span class="der">Precio catálogo</span><span class="der">Precio especial</span><span class="der">Total</span><span>¿Lo ve?</span><span></span>
@@ -288,6 +294,14 @@
     border-radius: 10px;
     padding: 10px 12px;
     margin-bottom: 10px;
+  }
+  .todos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
   }
   .escoger.proveedor {
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 3fr) auto;

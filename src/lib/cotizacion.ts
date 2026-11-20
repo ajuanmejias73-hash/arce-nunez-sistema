@@ -30,7 +30,7 @@ export function normalizarPartes(v: unknown): Parte[] {
       continue;
     }
     if (!nombre && !renglones.length && monto === null) continue;
-    res.push({ nombre, monto, renglones });
+    res.push({ nombre, monto, renglones, ...(p?.montoVisible === false ? { montoVisible: false } : {}) });
   }
   return res;
 }

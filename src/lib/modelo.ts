@@ -64,7 +64,7 @@ export function armarVista(d: DatosCotizacion, ajustes: Ajustes, catalogo: Mater
     const etiqueta = nombre ? `PARTE ${romano(++n)}` : '';
     const renglones = p.renglones.filter((r) => r.clienteVe && r.texto.trim()).map((r) => r.texto.trim());
     if (!nombre && !renglones.length) continue;
-    partes.push({ etiqueta, nombre, renglones, monto: mostrarMontos && p.monto !== null ? colones(p.monto) : '' });
+    partes.push({ etiqueta, nombre, renglones, monto: mostrarMontos && p.monto !== null && p.montoVisible !== false ? colones(p.monto) : '' });
   }
 
   // Materiales.

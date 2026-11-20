@@ -159,6 +159,8 @@ export interface Parte {
   nombre: string;
   monto: number | null;
   renglones: Renglon[];
+  /** false = el cliente no ve el monto de esta Parte (igual cuenta en el total). */
+  montoVisible?: boolean;
 }
 
 export interface FilaMaterial {
