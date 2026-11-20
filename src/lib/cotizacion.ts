@@ -45,6 +45,14 @@ function normalizarMateriales(v: unknown): FilaMaterial[] {
       unidad: texto(m.unidad),
       precioEspecial: numONulo(m.precioEspecial),
       clienteVe: si(m.clienteVe),
+      ...(texto(m.proveedor).trim()
+        ? {
+            proveedor: texto(m.proveedor).trim(),
+            costoProveedor: numONulo(m.costoProveedor),
+            ganancia: numONulo(m.ganancia),
+            mencionarProveedor: m.mencionarProveedor === true,
+          }
+        : {}),
     }));
 }
 
@@ -224,6 +232,12 @@ export function montoDescuento(ds: DatosCotizacion['descuento'], base: number): 
   return Math.min(Math.round(m), base);
 }
 
+/** Precio para el cliente de algo de un proveedor: costo + ganancia, redondeado. */
+export function precioConGanancia(costo: number | null, ganancia: number | null): number | null {
+  if (costo === null) return null;
+  return Math.round(costo * (1 + (ganancia ?? 0)));
+}
+
 /** Buscar materiales por nombre, también por el nombre que tenían antes (si nadie más lo usa). */
 export function porNombreConAntes(catalogo: Material[]): Map<string, Material> {
   const mapa = new Map<string, Material>();
@@ -235,8 +249,9 @@ export function porNombreConAntes(catalogo: Material[]): Map<string, Material> {
 export function calcular(d: DatosCotizacion, catalogo: Material[], tasaIva: number): Calculo {
   const porNombre = porNombreConAntes(catalogo);
   const filas: FilaCalculada[] = d.materiales.map((f) => {
-    const cat = porNombre.get(f.material.trim());
-    const precioCatalogo = cat?.precio ?? null;
+    // Lo de un proveedor: su costo más la ganancia (si se puso). No se busca en el catálogo.
+    const cat = f.proveedor ? undefined : porNombre.get(f.material.trim());
+    const precioCatalogo = f.proveedor ? precioConGanancia(f.costoProveedor ?? null, f.ganancia ?? null) : (cat?.precio ?? null);
     const precioUsado = f.precioEspecial ?? precioCatalogo;
     const cant = cantidadNumero(f.cantidad);
     return {

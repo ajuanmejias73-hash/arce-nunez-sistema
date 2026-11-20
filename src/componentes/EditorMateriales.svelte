@@ -37,6 +37,33 @@
     const ms = selCategoria && valor ? deTipo(catalogo, selCategoria, valor) : [];
     selMaterial = ms.length === 1 ? ms[0].material : '';
   }
+  // Escoger de un proveedor: Proveedor → Producto (con su precio).
+  const proveedores = $derived([...(datos.c?.proveedores ?? [])].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
+  let selProveedor = $state('');
+  let selProducto = $state('');
+  const productos = $derived(proveedores.find((p) => p.nombre === selProveedor)?.productos ?? []);
+
+  function agregarDeProveedor() {
+    if (!selProveedor) return;
+    const p = productos.find((x) => x.producto === selProducto);
+    const fila = {
+      material: p?.producto ?? '',
+      cantidad: null,
+      unidad: p?.unidad ?? '',
+      precioEspecial: null,
+      clienteVe: true,
+      proveedor: selProveedor,
+      costoProveedor: p?.precio ?? null,
+      ganancia: null,
+      mencionarProveedor: false,
+    };
+    const vacia = d.materiales.findIndex((f) => !f.material.trim() && !f.proveedor);
+    if (vacia >= 0) d.materiales[vacia] = fila;
+    else d.materiales.push(fila);
+    dialogos.avisar(p ? `Agregado: ${p.producto} (${selProveedor})` : `Agregado un renglón de ${selProveedor}: escribí qué es y su costo.`);
+    selProducto = '';
+  }
+
   function agregarEscogido() {
     if (!selMaterial) return;
     const vacia = d.materiales.findIndex((f) => !f.material.trim());
@@ -87,8 +114,8 @@
       <div class="fila" class:oculto={!f.clienteVe}>
         <div class="celda material">
           <span class="rotulo">Material</span>
-          <input bind:value={f.material} list="lista-materiales" aria-label="Material {i + 1}" placeholder="Escogé o escribí" />
-          {#if f.material.trim() && !nombres.has(f.material.trim())}
+          <input bind:value={f.material} list={f.proveedor ? undefined : 'lista-materiales'} aria-label="Material {i + 1}" placeholder={f.proveedor ? '¿Qué es? (ej. Ventana 2 m)' : 'Escogé o escribí'} />
+          {#if !f.proveedor && f.material.trim() && !nombres.has(f.material.trim())}
             <button class="enlace" onclick={() => alCatalogo(i)}>¿Agregarlo al catálogo?</button>
           {/if}
         </div>
@@ -100,7 +127,7 @@
           <span class="rotulo">Unidad</span>
           <input bind:value={f.unidad} list="lista-unidades" placeholder={c?.unidadFinal || ''} aria-label="Unidad {i + 1}" />
         </div>
-        <div class="celda der"><span class="rotulo">Precio catálogo</span><span class="valor">{c?.precioCatalogo !== null && c?.precioCatalogo !== undefined ? colones(c.precioCatalogo) : '—'}</span></div>
+        <div class="celda der"><span class="rotulo">{f.proveedor ? 'Precio al cliente' : 'Precio catálogo'}</span><span class="valor">{c?.precioCatalogo !== null && c?.precioCatalogo !== undefined ? colones(c.precioCatalogo) : '—'}</span></div>
         <div class="celda"><span class="rotulo">Precio especial</span><CampoNumero bind:valor={f.precioEspecial} dinero etiqueta="Precio especial {i + 1}" /></div>
         <div class="celda der"><span class="rotulo">Total</span><strong class="valor">{c?.total !== null && c?.total !== undefined ? colones(c.total) : '—'}</strong></div>
         <label class="celda ve">
@@ -108,6 +135,23 @@
           <span class="ve-caja"><input type="checkbox" bind:checked={f.clienteVe} /> {f.clienteVe ? 'Sí' : 'No'}</span>
         </label>
         <button class="quitar" onclick={() => d.materiales.splice(i, 1)} aria-label="Quitar material {i + 1}">×</button>
+        {#if f.proveedor}
+          <div class="prov">
+            <span class="sello">🏷 {f.proveedor}</span>
+            <label>
+              Costo del proveedor
+              <CampoNumero bind:valor={() => f.costoProveedor ?? null, (v) => (f.costoProveedor = v)} dinero etiqueta="Costo del proveedor {i + 1}" />
+            </label>
+            <label>
+              Ganancia % (opcional)
+              <CampoNumero bind:valor={() => f.ganancia ?? null, (v) => (f.ganancia = v)} factor={100} etiqueta="Ganancia {i + 1}" placeholder="0" />
+            </label>
+            <label class="mencionar">
+              <input type="checkbox" bind:checked={() => f.mencionarProveedor === true, (v) => (f.mencionarProveedor = v)} />
+              El cliente ve que es de {f.proveedor}
+            </label>
+          </div>
+        {/if}
       </div>
     {/each}
   </div>
@@ -141,6 +185,27 @@
   </label>
   <button class="btn" onclick={agregarEscogido} disabled={!selMaterial}>Agregar</button>
 </div>
+
+{#if proveedores.length}
+  <div class="escoger proveedor">
+    <strong class="escoger-titulo">Escoger de un proveedor</strong>
+    <label>
+      <span class="etiqueta">Proveedor</span>
+      <select bind:value={selProveedor} onchange={() => (selProducto = '')}>
+        <option value="">— Escogé —</option>
+        {#each proveedores as p (p.nombre)}<option value={p.nombre}>{p.nombre}</option>{/each}
+      </select>
+    </label>
+    <label class="doble">
+      <span class="etiqueta">Producto y precio del proveedor</span>
+      <select bind:value={selProducto} disabled={!selProveedor}>
+        <option value="">{productos.length ? '— Escogé (o dejalo así para escribirlo) —' : 'Sin productos: se escribe a mano'}</option>
+        {#each productos as x (x.producto)}<option value={x.producto}>{x.producto} — {x.precio !== null ? colones(x.precio) : 'sin precio'} / {x.unidad}</option>{/each}
+      </select>
+    </label>
+    <button class="btn" onclick={agregarDeProveedor} disabled={!selProveedor}>Agregar</button>
+  </div>
+{/if}
 
 <button class="btn-dorado" onclick={nuevo}>+ Material escrito a mano</button>
 
@@ -223,6 +288,42 @@
     border-radius: 10px;
     padding: 10px 12px;
     margin-bottom: 10px;
+  }
+  .escoger.proveedor {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 3fr) auto;
+    background: #eef4f8;
+  }
+  .prov {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    align-items: end;
+    background: #eef4f8;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--suave);
+  }
+  .prov label {
+    display: grid;
+    gap: 2px;
+    max-width: 170px;
+  }
+  .prov .mencionar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    max-width: none;
+    min-height: 38px;
+    color: var(--texto);
+  }
+  .sello {
+    align-self: center;
+    font-size: 0.9rem;
+    color: #2f5f7f;
+    font-weight: 700;
   }
   .escoger-titulo {
     grid-column: 1 / -1;

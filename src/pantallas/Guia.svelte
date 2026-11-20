@@ -41,7 +41,17 @@
   </section>
 
   <section class="tarjeta">
-    <h2>4. Plata</h2>
+    <h2>4. Clientes y proveedores</h2>
+    <ul>
+      <li><button class="enlace" onclick={() => rutas.ir('clientes')}>Clientes</button>: tocá un cliente para ver sus datos, todas sus cotizaciones con sus versiones, cuánto ha pagado y cuánto debe. Desde ahí lo llamás, le escribís por WhatsApp o le hacés una <strong>Nueva cotización</strong> con sus datos ya puestos. Con <strong>+ Agregar cliente</strong> lo guardás aunque todavía no tenga cotización.</li>
+      <li><button class="enlace" onclick={() => rutas.ir('proveedores')}>Proveedores</button> (por ejemplo, Vidrios Arias): guardá su contacto y sus productos con el precio que les cobra.</li>
+      <li>En la cotización, en Materiales, usá <strong>Escoger de un proveedor</strong>. Podés sumarle un % de ganancia (si no, se cobra lo mismo). El cliente solo ve el nombre del proveedor si marcás "El cliente ve que es de…"; ustedes siempre lo ven en la cotización.</li>
+      <li>Cuando la cotización se acepta, lo del proveedor queda como gasto estimado a su nombre. Los pagos al proveedor se registran desde su ficha o en Pagos y gastos.</li>
+    </ul>
+  </section>
+
+  <section class="tarjeta">
+    <h2>5. Plata</h2>
     <ul>
       <li><strong>Pago de cliente</strong>: escogé la cotización; el sistema sugiere el adelanto o lo que falta, y pone solo la categoría y el estado (Aceptada o Pagada).</li>
       <li><strong>Gasto</strong>: materiales, combustible, etc. Si es de una obra, escogela para ver la ganancia por obra.</li>
@@ -51,7 +61,7 @@
   </section>
 
   <section class="tarjeta">
-    <h2>5. Cuidados</h2>
+    <h2>6. Cuidados</h2>
     <ul>
       <li>Todo lo que se guarda queda con el nombre de quien lo hizo (Pablo o Lin).</li>
       <li>Si los dos usan el sistema a la vez, la página se pone al día sola cada poco y avisa los cambios del otro.</li>

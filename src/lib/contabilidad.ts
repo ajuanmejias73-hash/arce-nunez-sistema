@@ -2,7 +2,7 @@
  * Reglas de la contabilidad (sección 10 de la especificación): pagos de clientes,
  * planilla y resúmenes. Solo cuentas, sin pantallas: así se prueban solas.
  */
-import { ESTADOS_ACEPTADOS, calcular, ultimaVersion } from './cotizacion.ts';
+import { ESTADOS_ACEPTADOS, calcular, cantidadNumero, ultimaVersion } from './cotizacion.ts';
 import { hoyISO } from './formato.ts';
 import type { Cotizacion, Hora, Material, Movimiento } from './tipos.ts';
 
@@ -131,7 +131,7 @@ export function porObra(cotizaciones: Cotizacion[], movimientos: Movimiento[], h
       const gastos = gastosDeObra(c.numero, movimientos);
       const p = presupuesto(c, catalogo, tasaIva);
       return {
-        presupuestoGastos: p.materiales + p.extras,
+        presupuestoGastos: p.costoMateriales + p.extras,
         manoDeObraCotizada: p.manoDeObra,
         planillaTotal: horas.filter((h) => h.cotizacion === c.numero).reduce((s, h) => s + totalHora(h), 0),
         estimados: movimientos.filter((m) => m.cotizacion === c.numero && m.estimado).length,
@@ -159,9 +159,15 @@ export function presupuesto(c: Cotizacion, catalogo: Material[], tasaIva: number
   const d = ultimaVersion(c).datos;
   const calc = calcular(d, catalogo, tasaIva);
   const arce = d.quienCompraMateriales === 'Arce Nuñez';
+  // La ganancia sobre lo de proveedores no es un gasto.
+  const gananciaProveedores = calc.filas.reduce((s, f) => {
+    if (!f.proveedor || f.total === null || f.costoProveedor == null) return s;
+    return s + Math.max(0, f.total - (cantidadNumero(f.cantidad) ?? 0) * f.costoProveedor);
+  }, 0);
   const materiales = arce ? calc.materiales : 0;
+  const costoMateriales = arce ? Math.max(0, calc.materiales - gananciaProveedores) : 0;
   const manoDeObra = d.modoPrecio === 'Partes + materiales' ? calc.manoDeObra : Math.max(0, calc.subtotal - calc.extras - materiales);
-  return { materiales, extras: calc.extras, manoDeObra };
+  return { materiales, costoMateriales, extras: calc.extras, manoDeObra };
 }
 
 export type GastoNuevo = Omit<Movimiento, 'id' | 'registradoPor' | 'registrado'>;
@@ -180,8 +186,27 @@ export function gastosEstimados(c: Cotizacion, catalogo: Material[], tasaIva: nu
   const base = { fecha, tipo: 'Gasto' as const, cotizacion: c.numero, persona: '', metodo: '', comprobante: '', estimado: true };
   const nota = `Estimado de ${c.numero} v${v.version}: cambialo por el monto real.`;
   const lista: GastoNuevo[] = [];
+  // Lo de proveedores va aparte, a nombre de cada uno y por lo que cobra el proveedor (sin la ganancia).
+  const porProveedor = new Map<string, { costo: number; cobrado: number }>();
   if (p.materiales > 0) {
-    lista.push({ ...base, categoria: cat('Materiales', 'material'), descripcion: `Materiales según la cotización ${c.numero}`, monto: Math.round(p.materiales), notas: nota });
+    const calc = calcular(d, catalogo, tasaIva);
+    for (const f of calc.filas) {
+      if (!f.proveedor || f.total === null) continue;
+      const cant = cantidadNumero(f.cantidad) ?? 0;
+      const x = porProveedor.get(f.proveedor) ?? { costo: 0, cobrado: 0 };
+      x.costo += f.costoProveedor != null ? cant * f.costoProveedor : f.total;
+      x.cobrado += f.total;
+      porProveedor.set(f.proveedor, x);
+    }
+  }
+  const cobradoProveedores = [...porProveedor.values()].reduce((s, x) => s + x.cobrado, 0);
+  const materiales = p.materiales - cobradoProveedores;
+  if (materiales > 0) {
+    lista.push({ ...base, categoria: cat('Materiales', 'material'), descripcion: `Materiales según la cotización ${c.numero}`, monto: Math.round(materiales), notas: nota });
+  }
+  for (const [proveedor, x] of porProveedor) {
+    if (x.costo <= 0) continue;
+    lista.push({ ...base, persona: proveedor, categoria: cat('Materiales', 'material'), descripcion: `${proveedor} (${c.numero})`, monto: Math.round(x.costo), notas: nota });
   }
   for (const x of d.extras ?? []) {
     if (!x.monto || x.monto <= 0) continue;

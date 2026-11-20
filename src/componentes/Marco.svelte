@@ -87,7 +87,7 @@
         </button>
       {/if}
       {#each MODULOS.filter((m) => m.grupo === g) as m}
-        <button class:activo={rutas.actual === m.ruta || (m.ruta === 'historial' && rutas.actual.startsWith('ver/'))} class:nueva={m.ruta === 'nueva'} onclick={() => ir(m.ruta)}>{m.nombre}</button>
+        <button class:activo={rutas.actual === m.ruta || rutas.actual.startsWith(m.ruta + '/') || (m.ruta === 'historial' && rutas.actual.startsWith('ver/'))} class:nueva={m.ruta === 'nueva'} onclick={() => ir(m.ruta)}>{m.nombre}</button>
       {/each}
     {/each}
   </nav>

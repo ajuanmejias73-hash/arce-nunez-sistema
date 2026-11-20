@@ -20,6 +20,7 @@
   const v = $derived(c ? (c.versiones.find((x) => String(x.version) === pedida) ?? c.versiones[c.versiones.length - 1]) : undefined);
   const esUltima = $derived(!!c && !!v && v.version === c.versionActual);
   const vista = $derived(v ? vistaDe(v) : null);
+  const deProveedores = $derived(v ? v.datos.materiales.filter((f) => f.proveedor) : []);
 
   let notas = $state('');
   let notasDe = '';
@@ -112,6 +113,7 @@
         <div class="botones">
           <button class="btn" onclick={() => modificar(c, v)}>Modificar {esUltima ? '' : `la v${v.version}`}</button>
           <button class="btn-borde" onclick={() => usarDeBase(c, v)} title="Cotización nueva (número y fecha nuevos) con estos mismos datos">Usar de base para una nueva</button>
+          {#if c.cliente.trim()}<button class="btn-borde" onclick={() => rutas.ir('clientes/' + encodeURIComponent(c.cliente.trim()))}>Ficha de {c.cliente.trim()}</button>{/if}
         </div>
         <h3 class="sub">Enviar al cliente</h3>
         <div class="enviar">
@@ -119,6 +121,23 @@
           <button class="btn-borde" onclick={() => archivo('descargar')} disabled={!!ocupado}>{ocupado === 'pdfdescargar' ? 'Preparando…' : 'Descargar PDF'}</button>
         </div>
       </section>
+
+      {#if deProveedores.length}
+        <section class="tarjeta">
+          <h2>Proveedores</h2>
+          <p class="ayuda">Solo lo ven ustedes. "Lo ve" = el nombre del proveedor sale en el PDF.</p>
+          <ul class="provs">
+            {#each deProveedores as f}
+              <li>
+                <a href="#/proveedores/{encodeURIComponent(f.proveedor ?? '')}">{f.proveedor}</a>: {f.material || '(sin nombre)'}
+                <small>
+                  costo {f.costoProveedor != null ? colones(f.costoProveedor) : '—'}{f.ganancia ? ` + ${Math.round(f.ganancia * 100)}% ganancia` : ''} · {f.mencionarProveedor ? 'el cliente lo ve' : 'el cliente no lo ve'}
+                </small>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
 
       <section class="tarjeta">
         <h2>Notas internas</h2>
@@ -272,5 +291,21 @@
       position: static;
       order: -1;
     }
+  }
+  .provs {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: grid;
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+  .provs a {
+    font-weight: 700;
+    color: var(--dorado-osc);
+  }
+  .provs small {
+    display: block;
+    color: var(--suave);
   }
 </style>

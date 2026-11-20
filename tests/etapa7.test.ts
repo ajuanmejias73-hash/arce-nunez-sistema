@@ -84,7 +84,7 @@ describe('gastos estimados al aceptarse y presupuesto', () => {
 
   it('presupuesto y comparación por obra', () => {
     const c = cot(base());
-    expect(presupuesto(c, cat, 0.13)).toEqual({ materiales: 70000, extras: 40000, manoDeObra: 100000 });
+    expect(presupuesto(c, cat, 0.13)).toEqual({ materiales: 70000, costoMateriales: 70000, extras: 40000, manoDeObra: 100000 });
     const o = porObra([c], [], [], cat, 0.13)[0];
     expect(o).toMatchObject({ presupuestoGastos: 110000, manoDeObraCotizada: 100000, planillaTotal: 0 });
   });

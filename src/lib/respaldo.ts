@@ -10,6 +10,8 @@ const ARCHIVOS = {
   'movimientos.json': 'movimientos',
   'trabajadores.json': 'trabajadores',
   'horas.json': 'horas',
+  'clientes.json': 'clientes',
+  'proveedores.json': 'proveedores',
 } as const;
 
 export async function crearRespaldo(avance: (texto: string) => void): Promise<{ blob: Blob; nombre: string; faltaron: string[] }> {

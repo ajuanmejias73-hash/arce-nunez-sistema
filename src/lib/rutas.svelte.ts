@@ -1,6 +1,6 @@
 /** Navegación entre pantallas con la dirección (#/ajustes, #/catalogos…). */
 
-export type Grupo = 'Cotizaciones' | 'Dinero' | 'Configuración';
+export type Grupo = 'Cotizaciones' | 'Clientes y proveedores' | 'Dinero' | 'Configuración';
 
 export interface Modulo {
   ruta: string;
@@ -11,12 +11,14 @@ export interface Modulo {
   etapa: number;
 }
 
-export const GRUPOS: Grupo[] = ['Cotizaciones', 'Dinero', 'Configuración'];
+export const GRUPOS: Grupo[] = ['Cotizaciones', 'Clientes y proveedores', 'Dinero', 'Configuración'];
 
 export const MODULOS: Modulo[] = [
   { ruta: 'nueva', nombre: '+ Nueva cotización', descripcion: 'Para un cliente nuevo o uno que ya tiene cotizaciones', grupo: 'Cotizaciones', etapa: 2 },
   { ruta: 'modificar', nombre: 'Modificar cotización', descripcion: 'Escoger una guardada y hacerle cambios (queda como v2, v3…)', grupo: 'Cotizaciones', etapa: 2 },
   { ruta: 'historial', nombre: 'Historial', descripcion: 'Todas las cotizaciones, su estado y sus versiones', grupo: 'Cotizaciones', etapa: 3 },
+  { ruta: 'clientes', nombre: 'Clientes', descripcion: 'Ficha de cada cliente, sus cotizaciones, versiones y lo que debe', grupo: 'Clientes y proveedores', etapa: 5 },
+  { ruta: 'proveedores', nombre: 'Proveedores', descripcion: 'Contactos, productos con precio y lo que se les ha pagado', grupo: 'Clientes y proveedores', etapa: 5 },
   { ruta: 'contabilidad', nombre: 'Contabilidad', descripcion: 'Resumen del mes, del año y por obra', grupo: 'Dinero', etapa: 5 },
   { ruta: 'movimientos', nombre: 'Pagos y gastos', descripcion: 'Pagos de clientes y gastos', grupo: 'Dinero', etapa: 5 },
   { ruta: 'planilla', nombre: 'Planilla', descripcion: 'Trabajadores y horas', grupo: 'Dinero', etapa: 5 },

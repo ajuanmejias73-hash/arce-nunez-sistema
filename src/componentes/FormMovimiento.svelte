@@ -7,7 +7,7 @@
   import type { Movimiento, TipoMovimiento } from '../lib/tipos.ts';
   import CampoNumero from './CampoNumero.svelte';
 
-  let { tipo, editar = null, listo }: { tipo: TipoMovimiento; editar?: Movimiento | null; listo: () => void } = $props();
+  let { tipo, editar = null, listo, persona = '' }: { tipo: TipoMovimiento; editar?: Movimiento | null; listo: () => void; persona?: string } = $props();
 
   const c = $derived(datos.c!);
   // svelte-ignore state_referenced_locally
@@ -15,6 +15,12 @@
   // svelte-ignore state_referenced_locally
   const tipoInicial = tipo;
   const categorias = $derived(tipoInicial === 'Gasto' ? c.ajustes.listas.categoriasGasto : c.ajustes.listas.categoriasIngreso);
+  /** Nombres que se sugieren: proveedores y trabajadores en gastos; clientes en ingresos. */
+  const personas = $derived(
+    tipoInicial === 'Gasto'
+      ? [...c.proveedores.map((p) => p.nombre), ...c.trabajadores.map((t) => t.nombre)]
+      : [...new Set([...c.clientes.map((x) => x.nombre), ...c.cotizaciones.map((x) => x.cliente.trim()).filter(Boolean)])].sort((a, b) => a.localeCompare(b, 'es')),
+  );
   const obras = $derived([...c.cotizaciones].sort((a, b) => b.numero.localeCompare(a.numero, 'es', { numeric: true })));
 
   let f = $state({
@@ -22,7 +28,8 @@
     categoria: inicial?.categoria ?? '',
     descripcion: inicial?.descripcion ?? '',
     cotizacion: inicial?.cotizacion ?? '',
-    persona: inicial?.persona ?? '',
+    // svelte-ignore state_referenced_locally
+    persona: inicial?.persona ?? persona,
     metodo: inicial?.metodo ?? datos.c!.ajustes.listas.metodosPago[0] ?? '',
     monto: (inicial?.monto ?? null) as number | null,
     comprobante: inicial?.comprobante ?? '',
@@ -84,7 +91,8 @@
         {#each obras as x}<option value={x.numero}>{x.numero} · {x.cliente}</option>{/each}
       </select>
     </label>
-    <label>{tipoInicial === 'Gasto' ? 'Proveedor o trabajador' : 'De quién'} (opcional) <input bind:value={f.persona} /></label>
+    <label>{tipoInicial === 'Gasto' ? 'Proveedor o trabajador' : 'De quién'} (opcional) <input bind:value={f.persona} list="lista-personas" placeholder={tipoInicial === 'Gasto' ? 'Ej.: Vidrios Arias' : ''} /></label>
+    <datalist id="lista-personas">{#each personas as p}<option value={p}></option>{/each}</datalist>
     <label>
       Método
       <select bind:value={f.metodo}>{#each c.ajustes.listas.metodosPago as m}<option>{m}</option>{/each}</select>

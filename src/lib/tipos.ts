@@ -110,6 +110,35 @@ export interface Servicio extends Firma {
   notas: string;
 }
 
+/** Ficha de un cliente (los que solo salen en cotizaciones también se muestran, sin ficha). */
+export interface Cliente extends Firma {
+  nombre: string;
+  telefono: string;
+  ubicacion: string;
+  correo: string;
+  cedula: string;
+  notas: string;
+}
+
+export interface ProductoProveedor {
+  producto: string;
+  unidad: string;
+  /** Lo que cobra el proveedor. */
+  precio: number | null;
+  notas: string;
+}
+
+export interface Proveedor extends Firma {
+  nombre: string;
+  contacto: string;
+  telefono: string;
+  correo: string;
+  /** Qué vende (ej. "Vidrios y ventanas de aluminio"). */
+  queVende: string;
+  notas: string;
+  productos: ProductoProveedor[];
+}
+
 export interface Trabajador extends Firma {
   nombre: string;
   puesto: string;
@@ -140,6 +169,14 @@ export interface FilaMaterial {
   unidad: string;
   precioEspecial: number | null;
   clienteVe: boolean;
+  /** Si lo cotizó un proveedor (ej. "Vidrios Arias"). */
+  proveedor?: string;
+  /** Lo que cobra el proveedor por unidad. */
+  costoProveedor?: number | null;
+  /** Ganancia sobre el costo del proveedor (0.15 = 15 %). */
+  ganancia?: number | null;
+  /** El cliente ve el nombre del proveedor en el PDF. */
+  mencionarProveedor?: boolean;
 }
 
 export interface ClienteVe {

@@ -20,6 +20,8 @@
   import Movimientos from './pantallas/Movimientos.svelte';
   import Planilla from './pantallas/Planilla.svelte';
   import Guia from './pantallas/Guia.svelte';
+  import Clientes from './pantallas/Clientes.svelte';
+  import Proveedores from './pantallas/Proveedores.svelte';
   import Proximamente from './pantallas/Proximamente.svelte';
 
   // Al abrir: si este dispositivo ya tiene su conexión guardada, cargar los datos.
@@ -59,6 +61,10 @@
       <Movimientos />
     {:else if rutas.actual === 'planilla'}
       <Planilla />
+    {:else if rutas.actual === 'clientes' || rutas.actual.startsWith('clientes/')}
+      <Clientes />
+    {:else if rutas.actual === 'proveedores' || rutas.actual.startsWith('proveedores/')}
+      <Proveedores />
     {:else if rutas.actual === 'guia'}
       <Guia />
     {:else if modulo && modulo.etapa > ETAPA_ACTUAL}

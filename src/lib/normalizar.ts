@@ -2,7 +2,7 @@
  * Completa y ordena los datos leídos del repositorio, para que la página nunca
  * falle si a un archivo le falta algo (por ejemplo, datos viejos o editados a mano).
  */
-import type { Ajustes, Clausula, CondicionClausula, Estado, Hora, Material, Movimiento, Servicio, Trabajador } from './tipos.ts';
+import type { Ajustes, Clausula, Cliente, CondicionClausula, Estado, Hora, Material, Movimiento, Proveedor, Servicio, Trabajador } from './tipos.ts';
 import { FORMAS_COBRO } from './tipos.ts';
 
 export const COLORES_ESTADO: Record<string, string> = {
@@ -166,6 +166,44 @@ export function normalizarServicios(v: unknown): Servicio[] {
       tipoTrabajo: texto(s.tipoTrabajo),
       notas: texto(s.notas),
       ...firma(s),
+    }));
+}
+
+export function normalizarClientes(v: unknown): Cliente[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((c) => texto(c?.nombre).trim())
+    .map((c) => ({
+      nombre: texto(c.nombre).trim(),
+      telefono: texto(c.telefono),
+      ubicacion: texto(c.ubicacion),
+      correo: texto(c.correo),
+      cedula: texto(c.cedula),
+      notas: texto(c.notas),
+      ...firma(c),
+    }));
+}
+
+export function normalizarProveedores(v: unknown): Proveedor[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((p) => texto(p?.nombre).trim())
+    .map((p) => ({
+      nombre: texto(p.nombre).trim(),
+      contacto: texto(p.contacto),
+      telefono: texto(p.telefono),
+      correo: texto(p.correo),
+      queVende: texto(p.queVende),
+      notas: texto(p.notas),
+      productos: (Array.isArray(p.productos) ? p.productos : [])
+        .filter((x: Record<string, unknown>) => texto(x?.producto).trim())
+        .map((x: Record<string, unknown>) => ({
+          producto: texto(x.producto).trim(),
+          unidad: texto(x.unidad, 'unid') || 'unid',
+          precio: numeroONulo(x.precio),
+          notas: texto(x.notas),
+        })),
+      ...firma(p),
     }));
 }
 

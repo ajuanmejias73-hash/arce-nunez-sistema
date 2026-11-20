@@ -1,6 +1,7 @@
 <script lang="ts">
   import { abrirEnEditor, puedeReemplazar } from '../lib/abrir.ts';
-  import { clientes, datosNuevos, siguienteNumero } from '../lib/cotizacion.ts';
+  import { datosNuevos, siguienteNumero } from '../lib/cotizacion.ts';
+  import { listaClientes } from '../lib/contactos.ts';
   import { datos } from '../lib/datos.svelte.ts';
   import { editor } from '../lib/editor.svelte.ts';
   import { rutas } from '../lib/rutas.svelte.ts';
@@ -10,7 +11,7 @@
 
   const c = $derived(datos.c!);
   const numero = $derived(siguienteNumero(c.cotizaciones, c.ajustes.porDefecto.prefijo));
-  const lista = $derived(clientes(c.cotizaciones));
+  const lista = $derived(listaClientes(c.clientes, c.cotizaciones, c.movimientos).map((x) => ({ cliente: x.nombre, telefono: x.telefono, ubicacion: x.ubicacion, numeros: x.cotizaciones.map((q) => q.numero) })));
   const filtrados = $derived.by(() => {
     const q = buscar.trim().toLowerCase();
     return q ? lista.filter((x) => [x.cliente, x.telefono, x.ubicacion].some((v) => v.toLowerCase().includes(q))) : lista;
@@ -62,7 +63,7 @@
           <button onclick={() => clienteExistente(x)}>
             <strong>{x.cliente}</strong>
             <span>{[x.telefono, x.ubicacion].filter(Boolean).join(' · ') || 'Sin teléfono ni ubicación'}</span>
-            <small>{x.numeros.join(', ')}</small>
+            <small>{x.numeros.join(', ') || 'Sin cotizaciones todavía'}</small>
           </button>
         </li>
       {:else}

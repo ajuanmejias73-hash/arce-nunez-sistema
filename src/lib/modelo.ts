@@ -75,7 +75,8 @@ export function armarVista(d: DatosCotizacion, ajustes: Ajustes, catalogo: Mater
       ? {
           conPrecios,
           filas: filasVisibles.map((f) => ({
-            material: f.material,
+            // El proveedor solo sale si se marcó "El cliente ve que es de…".
+            material: f.proveedor && f.mencionarProveedor ? `${f.material} (${f.proveedor})` : f.material,
             cantidad: cantidadTexto(f.cantidad),
             unidad: f.unidadFinal,
             precio: conPrecios && f.precioUsado !== null ? colones(f.precioUsado) : '',

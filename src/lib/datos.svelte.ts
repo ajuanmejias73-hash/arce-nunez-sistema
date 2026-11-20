@@ -4,9 +4,9 @@
  * (con reintento si el otro usuario guardó al mismo tiempo).
  */
 import { RepoDatos, type Conexion } from './github.ts';
-import { normalizarAjustes, normalizarHoras, normalizarMateriales, normalizarMovimientos, normalizarServicios, normalizarTrabajadores } from './normalizar.ts';
+import { normalizarAjustes, normalizarClientes, normalizarProveedores, normalizarHoras, normalizarMateriales, normalizarMovimientos, normalizarServicios, normalizarTrabajadores } from './normalizar.ts';
 import { guardarConReintento } from './reintento.ts';
-import type { Ajustes, Cotizacion, Hora, Material, Movimiento, Servicio, Trabajador } from './tipos.ts';
+import type { Ajustes, Cliente, Cotizacion, Hora, Material, Movimiento, Proveedor, Servicio, Trabajador } from './tipos.ts';
 import { normalizarCotizaciones } from './cotizacion.ts';
 
 /** Cada archivo del repositorio de datos, con cómo se ordena al leerlo. */
@@ -18,6 +18,8 @@ const ARCHIVOS = {
   movimientos: { ruta: 'movimientos.json', normalizar: normalizarMovimientos },
   trabajadores: { ruta: 'trabajadores.json', normalizar: normalizarTrabajadores },
   horas: { ruta: 'horas.json', normalizar: normalizarHoras },
+  clientes: { ruta: 'clientes.json', normalizar: normalizarClientes },
+  proveedores: { ruta: 'proveedores.json', normalizar: normalizarProveedores },
 } as const;
 
 export interface Contenido {
@@ -28,6 +30,8 @@ export interface Contenido {
   movimientos: Movimiento[];
   trabajadores: Trabajador[];
   horas: Hora[];
+  clientes: Cliente[];
+  proveedores: Proveedor[];
 }
 
 export type Clave = keyof Contenido;
